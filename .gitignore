@@ -1,0 +1,76 @@
+# ============================================================
+# 忽略规则分六类：前端 / 后端 / 数据库 / 环境变量 / IDE / 系统与临时文件
+# 注意：不要把 .gitkeep、.mvn 包装器、docs/demo 里的演示素材忽略掉
+# ============================================================
+
+# ---------- 前端（Node / Vite） ----------
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.eslintcache
+.stylelintcache
+
+# ---------- 后端（Java / Maven） ----------
+target/
+backend/target/
+*.class
+*.jar
+*.war
+# Maven Wrapper 必须提交，不能忽略（否则别人 clone 后无法启动后端）
+!backend/.mvn/wrapper/maven-wrapper.jar
+!**/.mvn/wrapper/maven-wrapper.jar
+
+# ---------- 数据库（SQLite） ----------
+# 只忽略数据库文件，保留 backend/data/.gitkeep 以固定目录结构
+backend/data/*.db
+backend/data/*.db-journal
+backend/data/*.db-wal
+backend/data/*.db-shm
+*.sqlite
+*.sqlite3
+
+# ---------- 环境变量与密钥 ----------
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.pem
+*.key
+
+# ---------- IDE ----------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+nbproject/
+*.swp
+*.swo
+
+# ---------- 操作系统 ----------
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------- 日志与临时文件 ----------
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+*.rej
