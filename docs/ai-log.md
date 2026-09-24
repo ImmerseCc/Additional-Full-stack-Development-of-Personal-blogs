@@ -347,3 +347,24 @@
 - 验证命令与结果（均为实测输出）：提交批 4 前 `git status --short -uall` → 7 个 `M` + 1 个 `??`（`AppFooter.vue`）；`git commit` 后 `git log --oneline -1` → `378e3b0 feat(frontend): 阶段 3 批 4 路由过渡 + 页脚拆分 + README 与文档同步`，`git status` 干净；文档改动后重跑 `npm run build` → `✓ built in 140ms`（作回归确认，构建不受文档影响）。
 - 遗留问题：见 `docs/current-state.md` 第五节（共 14 条）。其中第 6、7 条（`frontend/public/`、种子文章补到约 12 篇）需**阶段 4 开工前向作者申请**；第 13、14 条（过渡观感、触摸点按路径）需作者目视 / 真机补验。
 - 下一步：**阶段 4** —— 前端模块二 / 三：文章列表（卡片、分页或无限滚动、骨架屏、悬停动效）与文章详情（Markdown 渲染、代码高亮、阅读进度条、TOC、图片懒加载）；按惯例由作者**新开会话**后再启动。
+
+### 阶段 4：前端模块二 / 三（批 0：开工基线 —— 三项申请落地 + 种子数据 + 数据库重置）
+- 我的提示词摘要：新会话开场同样要求"**先不要写代码**"，读 6 份文件后用不超过 10 行总结现状；随后"**遗留问题 1 已验收完毕，请继续，分批列出需要的事项**"；AI 给出阶段 4 分批方案（批 0–5）+ 3 项开工申请 + 10 个决策点后，作者回复"**三项申请均同意；决策点 6 不必新增（依赖）；其他决策均同意**"。落地种子数据时发现 tag ID 冲突，AI 取证后报请裁决，作者选择"**重置数据库**"。
+- AI 做了什么：
+  1. **基线**：核对工作区干净（`550f576`）、`5173/8080` 空闲、`npm run build` 基线 **41 模块 / 137ms**（主包 106.33 kB / gzip 41.62 kB、CSS 6.46 kB）；
+  2. **种子数据扩写**：`data.sql` 由 3 篇扩为 **12 篇原创中文文章 + 8 个标签 + 23 条关联**，封面统一指向 `/images/covers/*.svg`；针对"已存在的旧行不会被 `INSERT OR IGNORE` 更新"这一点，额外追加 3 条幂等回填 `UPDATE article SET cover_url = … WHERE id = N AND cover_url IS NULL`；
+  3. **静态资源**：委派子代理生成 `frontend/public/` 下 favicon 与 12 张封面 SVG（自绘图元、无 `<text>`、无外部引用、无 CSS 变量，652–1438 字节）；AI 侧独立复核（`grep` 结构校验 + 内置浏览器实拍画廊页，13 张全部正常渲染，验证后删除临时预览页）；
+  4. `index.html` 增加 `<link rel="icon" type="image/svg+xml" href="/favicon.svg" />`；
+  5. **实测种子数据 → 发现真实数据问题**：`GET /api/tags` 显示 `id=5` 仍是阶段 2 残留的「级联测试标签」，而「前端」标签不存在，文章 4/5/6/11 的 4 条关联被错挂（根因：固定 ID 的 `INSERT OR IGNORE` 整行跳过）→ 取证并报请作者；
+  6. 作者确认后**按标准路径重置数据库**（停服 → 删 `blog.db` → 重启重建）并复验：`tags=8`、`articles total=12`、封面 12/12、`?tags=前端` 4 篇、`size=5&page=2` 5 条；**二次重启后数量不变（幂等）**；
+  7. 契约长度核对：12 篇的 `title` / `summary` / `content` 全部在 1–100 / 0–200 / 1–50000 内；
+  8. 生产构建复核：`✓ 41 modules transformed` / `✓ built in 138ms`，`dist/` 内确认包含 13 个 SVG 资源，临时预览页未进产物；
+  9. 停服并清理派生进程（遗留项 10 本批复现 2 次：JVM 占 8080、node 占 5173），复查 `5173/8080 均已释放`。
+- 改动文件：
+  - `backend/src/main/resources/data.sql`（**完整**：3 → 12 篇 + 8 标签 + 23 关联 + 封面回填）
+  - `frontend/public/favicon.svg`、`frontend/public/images/covers/*.svg`（**完整**：13 个自绘 SVG；`frontend/public/` 为阶段 4 批 0 新建目录，落解决策 R）
+  - `frontend/index.html`（**完整**：新增 favicon 引用一行）
+  - `README.md`、`docs/current-state.md`、`docs/collaboration-log.md`、`docs/debug-log.md`、`docs/ai-log.md`（本条目）
+- 验证命令与结果（均为实测输出）：`npm run build` → `✓ 41 modules transformed` / `✓ built in 137ms`（基线）与 `138ms`（含资源后）；后端 `./mvnw -B -ntp spring-boot:run` + `node -e` 的 `fetch` 实测：`/api/health → 200`、`/api/tags → 8 个`、`/api/articles?size=20&status=ALL → total=12`（封面 12/12）、`?tags=前端 → 4`、`size=5&page=2 → 5 条`；二次启动幂等复核全部一致。完整闭环见 `docs/debug-log.md` **报错记录 6** 与 `docs/current-state.md` 第四节阶段 4 批 0 行。
+- 遗留问题：本批改动**尚未 git 提交**（等作者"批 0 通过"）；阶段 8 可选项（评论改查 / 上一篇下一篇 / 标签管理 / `view_count`）与 SQLite WAL 仍未做（不阻塞）。
+- 下一步：阶段 4 批 1 —— `src/api/` 请求层：`http.js`（统一拼 `/api`、解包 `{code,message,data}`、HTTP 与业务码分流、抛出可读错误）+ `articles.js` / `tags.js` / `comments.js` / `likes.js`（字段名严格照 `docs/api-contract.md` v1.0），并删除 `src/api/.gitkeep`。
