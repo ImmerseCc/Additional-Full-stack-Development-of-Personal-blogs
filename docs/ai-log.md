@@ -410,3 +410,25 @@
 - 期间遇到的两个**工具限制**（非项目缺陷，已记入 `debug-log.md` 观察项）：① 主题按钮的合成点击在桌面模式下也不生效，改用键盘 `Tab` + `Enter` 立刻成功（分页与重试按钮的点按是有效的）；② 路由过渡中间帧读取 DOM 只读到页头、`wait_for` 文本条件超时，一度误判"深链刷新后页面空白"，用截图复核后确认页面正常。
 - 遗留问题：本批已提交入库（`af913f0`，16 文件，+796/−63，提交后回归构建 148ms）；`?page` 超过总页数时只显示空态、不回退最后一页（遗留项 17）；骨架屏的"出现时机"未能真机抓拍（本地请求 ~10ms，遗留项 18）；前端仍无自动化回归（遗留项 16）。
 - 下一步：阶段 4 批 3 —— 文章详情：`src/utils/markdown.js`（markdown-it + highlight.js + DOMPurify，自写标题 `id` 规则，决策 X）+ `src/components/MarkdownRenderer.vue` + 重写 `ArticleDetailView.vue`（加载 / 404 / 错误分流），代码高亮用**手写的亮 / 暗两套配色**（决策 V），`prev` / `next` 区块不渲染（决策 U）。
+
+### 阶段 4：前端模块二 / 三（批 3：文章详情 + Markdown 渲染）
+- 我的提示词摘要："**请继续**"——执行批 3（详情页、Markdown 渲染管线、代码高亮、404 与错误分流）。
+- AI 做了什么：
+  1. **新建 `src/utils/markdown.js`**（渲染管线）：markdown-it（`html: false`、`linkify: true`）+ `highlight.js/lib/common` + DOMPurify；自写 `heading_ids` **核心规则**给 h1–h6 补 `id`（ASCII slug，纯中文标题用 `section-<序号>` 兜底，同名追加 `-2` / `-3`）；外链统一 `target="_blank"` + `rel="noopener noreferrer"`；未知语言**不高亮而是转义**（不猜语言）；DOMPurify 白名单 `ADD id/target/rel/class`、`FORBID style/iframe/form/input/button/script`；
+  2. **新建 `src/components/SkeletonBlock.vue`**（骨架原语，把"流光"这一段 CSS 收敛到一处，决策 AD），`src/components/ArticleSkeleton.vue` 改为复用它——消除同一段动画 CSS 的重复；
+  3. **新建 `src/components/MarkdownRenderer.vue`**：`v-html` 插入已清洗 HTML；因为 `v-html` 内容拿不到 scoped 的 `data` 属性，正文排版与代码高亮映射全部用 `:deep()` 写；
+  4. **`src/styles/base.css`** 末尾追加 `--hl-*` 亮 / 暗两套高亮语义色（决策 V：手写配色，不引 highlight.js 官方主题）；
+  5. **重写 `src/views/ArticleDetailView.vue`**：加载态（`SkeletonBlock` 拼装）/ 出错（可重试）/ 文章不存在（只给返回列表，决策 AE）/ 正文；含封面、标签、创建与更新时间（不同才显示"更新于"）、点赞评论数；拿到数据后覆盖 `document.title`；
+  6. **验证**：`npm run build` → **119 模块 / 169ms**；临时自测页跑 **14 项 Markdown 管线断言**（含 XSS 与 DOMPurify 直接施压）；真实详情页做 **6 项实测**（内容 / 404 / 错误 + 重试 / 暗色与亮色高亮配色 / 移动端 / 骨架屏）。
+- 期间的一段插曲（**我的测试 bug，不是项目问题**）：第一轮断言有 3 个 FAIL，排查后确认是断言写错 —— `html: false` 下原始 `<script>`、`<img onerror>` 会被**转义成可见文本**（不是被删除），而 `javascript:` 链接 markdown-it **根本不会解析成 `<a>`**；修正断言并补两条直接对 `DOMPurify.sanitize()` 施压的检查后 **15/15 全绿**，原始输出已留档在 `current-state.md` 第四节批 3 明细。
+- 改动文件：
+  - 新建（**完整**）：`frontend/src/utils/markdown.js`、`frontend/src/components/MarkdownRenderer.vue`、`frontend/src/components/SkeletonBlock.vue`
+  - 修改（**完整**）：`frontend/src/components/ArticleSkeleton.vue`（改用骨架原语）、`frontend/src/styles/base.css`（追加 `--hl-*` 两组令牌）、`frontend/src/views/ArticleDetailView.vue`（重写）
+  - 文档：`docs/current-state.md`（整份覆盖）、`docs/ai-log.md`（本条目）、`docs/collaboration-log.md`（最后更新行）
+- 验证命令与结果（均为实测输出）：
+  - `npm run build` → `✓ 119 modules transformed` / `✓ built in 169ms`；`dist/assets/ArticleDetailView-*.js 283.79 kB / gzip 105.72 kB`（**全在懒加载链上**：markdown-it + highlight.js + dompurify 不会进首页 / 列表包，主包仍 106.82 kB）、`ArticleDetailView-*.css 5.07 kB`、`index css 6.77 kB`
+  - Markdown 管线 **15 项断言全部 PASS**：英文标题 `id="hello-world"`；中文标题 `section-1/2/3` 且同名不重复；java 代码块高亮；未知语言不高亮且转义；原始 `<script>` / `<img onerror>` 转义为文本；`javascript:` 链接未渲染成 `<a>`；DOMPurify 直接清洗掉 `onerror` / `javascript:` / `style`+`iframe`；外链 `target`+`rel`、站内链接不加 target；表格与引用保留；未被注入 `window.__xss`
+  - 页面 6 项实测：① `/articles/1` 标题 / 日期 / 标签 / 封面 / 正文（h2 下边框、代码块高亮）正确，浏览器标签页标题变为文章标题；② `/articles/999999` → 「文章不存在」+ 返回链接（无重试）；③ 停后端 → 「文章加载失败」+「无法连接后端服务（HTTP 502）…」+ 重试；重启后**点重试 → 正常渲染**；④ 暗色与亮色两套代码高亮配色均正确；⑤ 375×667 详情页排版正常；⑥ 骨架屏原语亮 / 暗两套渲染正确
+  - 收尾：删除临时自测页（`dist/` 确认无残留）、停服 + 清理派生进程、复查 `5173/8080 均已释放`
+- 遗留问题：本批改动**尚未 git 提交**（等作者"批 3 通过"）；详情页无上一篇 / 下一篇（决策 U，阶段 8 实现 `adjacent` 接口时一并渲染，遗留项 19）；详情页 chunk 283.79 kB（预期取舍，遗留项 20）；骨架屏出现时机仍无法真机抓拍（遗留项 18）；前端仍无自动化回归（遗留项 16）。
+- 下一步：阶段 4 批 4 —— 加分项：`TableOfContents.vue`（桌面右侧固定栏、窄屏隐藏，决策 Y；当前小节高亮用 `scroll` + `getBoundingClientRect`）+ IntersectionObserver 进场动画（复用逻辑放 `src/utils/`，决策 Z）+ Markdown 图片懒加载（`renderMarkdown` 的 `image` 规则加 `loading="lazy"`，或渲染后统一处理）。

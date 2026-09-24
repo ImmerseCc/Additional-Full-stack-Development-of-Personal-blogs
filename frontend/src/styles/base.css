@@ -179,3 +179,26 @@ samp {
     scroll-behavior: auto !important;
   }
 }
+
+/* ---- 代码高亮语义色（阶段 4 批 3，决策 V：手写两套配色，不引 highlight.js 官方主题）----
+   MarkdownRenderer.vue 里用 :deep() 把这些令牌映射到 .hljs-* 类上。 */
+:root {
+  --hl-comment: #6a737d;
+  --hl-keyword: #cf222e;
+  --hl-string: #0a3069;
+  --hl-number: #0550ae;
+  --hl-function: #8250df;
+  --hl-type: #953800;
+  --hl-meta: #57606a;
+}
+
+[data-theme='dark'] {
+  --hl-comment: #8b949e;
+  --hl-keyword: #ff7b72;
+  --hl-string: #a5d6ff;
+  --hl-number: #79c0ff;
+  --hl-function: #d2a8ff;
+  --hl-type: #ffa657;
+  --hl-meta: #8b949e;
+}
+
