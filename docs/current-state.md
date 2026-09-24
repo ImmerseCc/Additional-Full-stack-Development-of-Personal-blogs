@@ -1,7 +1,7 @@
 # 当前状态
 
 > 本文件是项目进度的**唯一实时快照**，每个阶段/批次结束后同步更新；**每个新会话开始时，请先读本文件**。
-> 最后更新：阶段 2 批 3（评论与点赞）已完成 19 项实测（幂等两端、visitorId 归属校验、分页重构回归）；上一批的实测文章 5 已按作者选择用接口删除；改动尚未 git 提交。
+> 最后更新：阶段 2 批 4（收尾）完成 —— Swagger 注解与 info 元信息、异常兜底 4 项复测、`busy_timeout=5000` 生效核对；**阶段 2（批 0–4）全部完成**，待作者确认；改动尚未 git 提交。
 
 ---
 
@@ -18,10 +18,11 @@
 ## 一、当前阶段
 
 **阶段 1「目录结构与占位文件」：全部完成 ✅**（批 1 → 批 2 → 批 3 → 批 4，作者均已确认通过）
-**阶段 2「后端业务实现」：进行中 —— 批 0 ✅、批 1 ✅、批 2a ✅、批 2b ✅、批 3 ✅（19 项实测通过，待作者确认）；下一步批 4（阶段 2 收尾）。**
+**阶段 2「后端业务实现」：全部完成 ✅**（批 0 → 批 1 → 批 2a → 批 2b → 批 3 → 批 4，累计 52 项接口实测，待作者确认）
+**下一阶段：阶段 3「前端模块一：全局导航与主题」——尚未开始。**
 
 阶段 2 分批（作者已确认，其中"原批 2"按作者要求拆成 2a / 2b）：
-批 0 提交收尾 ✅ → 批 1 `common` + `model` + `config` ✅ → 批 2a 文章读路径（health / 列表 / 详情 / 标签）✅ → 批 2b 文章写路径（创建 / 更新 / 删除 + 级联删除实测）✅ → 批 3 评论 + 点赞 ✅ → 批 4 收尾（Swagger 注解、异常兜底实测、`busy_timeout` 评估、文档同步）。每批结束停下等作者确认。
+批 0 提交收尾 ✅ → 批 1 `common` + `model` + `config` ✅ → 批 2a 文章读路径 ✅ → 批 2b 文章写路径（含级联删除实测）✅ → 批 3 评论 + 点赞 ✅ → 批 4 收尾（Swagger 注解、异常兜底、`busy_timeout`）✅。每批结束停下等作者确认。
 
 ---
 
@@ -59,8 +60,8 @@
 
 ## 三、待确认 / 待执行
 
-1. **阶段 2 批 3 已完成（待作者确认）**：新增 7 个文件（评论 / 点赞的 repository · service · controller + 计划外的 `common/PageParams.java`）、修改 2 个文件（`ArticleRepository.existsById`、`ArticleService` 复用分页校验并新增 `requireArticleExists`）；`./mvnw -B -ntp compile` 通过、**19 项实测全部通过**（评论 201 与列表分页、40001 字段级报错、40004、visitorId 归属校验；点赞与取消**两端幂等**；`PageParams` 重构后的文章列表回归）；上一批的实测文章 5 已按你选的 **(b)** 用接口删除（标签「级联测试标签」按契约保留、计数 0）；**下一步是批 4（阶段 2 收尾）**；本批改动**尚未 git 提交**；
-2. **Git 提交链**：`501065a`（批 1 + 批 2 骨架）→ `25e280e`（frontend / backend 骨架 + Vite IPv4 修复）→ `e9ab336`（阶段 1 收尾文档 + 修正 git 状态描述）→ `92a5cc6`（阶段 2 批 1：common / model / config）→ `b22592d`（阶段 2 批 2a：文章读路径）→ `5c210a3`（阶段 2 批 2b：文章写路径）；
+1. **阶段 2 批 4（收尾）已完成（待作者确认）**：新增 `config/OpenApiConfig.java`、5 个 controller 补 `@Tag` / `@Operation` / `@Parameter`、JDBC URL 追加 `busy_timeout=5000`、`README.md` 补一行排查；实测 `/v3/api-docs` 含 5 个分组与 **13 条接口摘要**、`/swagger-ui/index.html → 200`、异常兜底 4 项正确、`PRAGMA busy_timeout = 5000` 生效；**阶段 2（批 0–4）至此全部完成**，下一步是**阶段 3「前端模块一：全局导航与主题」**；本批改动**尚未 git 提交**；
+2. **Git 提交链**：`501065a`（批 1 + 批 2 骨架）→ `25e280e`（frontend / backend 骨架 + Vite IPv4 修复）→ `e9ab336`（阶段 1 收尾文档 + 修正 git 状态描述）→ `92a5cc6`（阶段 2 批 1：common / model / config）→ `b22592d`（阶段 2 批 2a：文章读路径）→ `5c210a3`（阶段 2 批 2b：文章写路径）→ `4b1700b`（阶段 2 批 3：评论与点赞）；
 3. **每个阶段结束后作者会新开会话**：新会话请按"第零节 新会话接手说明"操作；
 4. ~~`docs/ai-log.md` 缺少批 3、批 4 与报错修复的逐轮记录~~ **已补齐**：应作者要求补记批 3 / 批 4 阶段记录（标为【补记】，来源为 `docs/collaboration-log.md` 阶段 1 已记录内容），并把报错记录 2、3 同步进 `docs/ai-log.md`；
 
@@ -91,9 +92,9 @@
 | 6 | `frontend/public/`（封面图等静态资源目录）未创建 | 阶段 4 文章封面暂无本地图片 | 需要时向作者申请新增；当前种子文章 `cover_url` 均为 NULL，前端可用渐变占位 |
 | 7 | 种子文章仅 3 篇 | 演示内容偏少 | 全量约 12 篇在阶段 4/5 补齐 |
 | 8 | 后端未做鉴权（演示项目） | 公网部署有风险 | 已在 `application.yml`、`AGENTS.md`、README 中明确标注 |
-| 9 | SQLite 的 `busy_timeout` 与 WAL 未设置 | 极端并发下可能 `SQLITE_BUSY` | 连接池已限制为 1；阶段 2 视情况补充 PRAGMA 设置 |
-| 10 | 结束后台任务会留下派生的 JVM 孤儿进程占住 8080 | 下次启动报端口占用 | 已实测并清理（`taskkill //PID`）；已写入 `docs/debug-log.md` 观察项；后续停后端请用 `TaskStop` 或按 PID 结束 |
-| 11 | JDK 26 提示 `WARNING: A restricted method in java.lang.System has been called`（sqlite-jdbc 加载本地库） | 仅警告，不影响功能 | 可选：启动参数加 `--enable-native-access=ALL-UNNAMED`；阶段 2 评估是否写进 README |
+| 9 | ~~SQLite 的 `busy_timeout` 与 WAL 未设置~~ **部分解决** | — | `busy_timeout=5000` 已通过 JDBC URL 设置并**实测生效**（阶段 2 批 4：`PRAGMA busy_timeout = 5000`）；**WAL 仍未启用**——连接池为 1、单写者场景下收益有限，暂不做，需要时可在 `connection-init-sql` 追加 `PRAGMA journal_mode = WAL` |
+| 10 | 结束后台任务会留下派生的 JVM 孤儿进程占住 8080 | 下次启动报端口占用 | 已实测并清理（`taskkill //PID`）；另注意：**后台任务有 10 分钟上限**，超时只杀包装进程、派生 JVM 仍存活（阶段 2 批 3 实测）；后续停后端请用 `TaskStop` 或按 PID 结束 |
+| 11 | ~~JDK 26 提示 `WARNING: A restricted method in java.lang.System has been called`~~ **已处理** | — | 结论：**仅是警告**，不写进标准启动命令（保持命令简洁）；已在 `README.md`《常见问题排查》补一行说明，并给出可选参数 `--enable-native-access=ALL-UNNAMED` |
 | 12 | ~~外键约束是否在应用连接上真正打开未验证~~ **已解决** | — | 阶段 2 批 2b 实测：给文章直接写入 1 条评论 + 1 条点赞后调用 `DELETE /api/articles/4` → `comment`、`like_record`、`article_tag` 计数全部归 0，`ON DELETE CASCADE` **真实生效**（Hikari 的 `connection-init-sql: PRAGMA foreign_keys = ON` 有效） |
 
 ---

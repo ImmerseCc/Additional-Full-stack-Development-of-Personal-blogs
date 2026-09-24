@@ -168,6 +168,22 @@
 - 遗留问题：本批 7 个新增 + 2 个修改的文件**尚未 git 提交**；阶段 2 仅剩批 4。
 - 下一步：阶段 2 批 4 —— 收尾（springdoc 注解、异常兜底实测、`busy_timeout` 评估、三份日志与状态快照同步）。
 
+### 阶段 2：后端业务实现（批 4：收尾 —— Swagger 注解、异常兜底、busy_timeout）
+- 我的提示词摘要："停止后端，批 3 通过，提交并继续"——先停服并提交批 3，再执行阶段 2 的收尾批（批 4）。
+- AI 做了什么：1) 停掉孤儿 JVM（PID 24680）并提交批 3（`4b1700b`）；2) 新增 `config/OpenApiConfig.java`（OpenAPI 的 info：标题 / 版本 / 说明）；3) 给 5 个 controller 补 `@Tag` / `@Operation`，点赞的 query 参数补 `@Parameter`；4) `application.yml` 的 JDBC URL 追加 `busy_timeout=5000`；5) `README.md` 常见问题表补一行（native-access 警告）；6) 编译 → 启动 → 验证 Swagger 元信息、异常兜底 4 项、`busy_timeout` 生效。
+- 改动文件：
+  - 新建（完整）：`backend/src/main/java/com/example/blog/config/OpenApiConfig.java`
+  - 修改：`backend/src/main/java/com/example/blog/controller/HealthController.java`、`ArticleController.java`、`TagController.java`、`CommentController.java`、`LikeController.java`（`@Tag` / `@Operation` / `@Parameter`）、`backend/src/main/resources/application.yml`（`?busy_timeout=5000`）、`README.md`（常见问题排查新增一行）
+- 验证命令与结果（均为实测输出）：
+  - `./mvnw -B -ntp compile` → `Compiling 36 source files`、`BUILD SUCCESS`
+  - `curl /v3/api-docs` → tag 分组 5 个（健康检查 / 文章 / 标签 / 评论 / 点赞）；`"summary"` **13 条**（＝已实现的 13 个操作，一条不缺）；`info.title = "个人博客后端 API"`、`info.version = "v1.0"`
+  - `curl /swagger-ui/index.html` → `HTTP 200`
+  - 异常兜底复测：非法 JSON → `400 + 40002`；未知路径 → `404 + 40004`；`POST /api/tags`（方法不支持）→ `400 + 40002`；空标题 → `400 + 40001` + `data.fields.title`
+  - `busy_timeout` 生效核对（临时程序用与 `application.yml` **相同**的 JDBC URL 建连）→ `PRAGMA busy_timeout = 5000`（期望值）→ **遗留项 9 的 busy_timeout 部分关闭**；同程序的 `PRAGMA foreign_keys = 0` 属预期（外键由 Hikari 连接初始化语句开启，URL 直连不带）
+  - 收尾：删除 `target/` 下临时文件（`BusyTimeoutCheck.java`、`cp.txt`）
+- 遗留问题：本批改动**尚未 git 提交**；WAL 模式仍未启用（连接池为 1、单写者场景下收益有限，暂不做并在 `current-state.md` 说明）；后端**仍在运行中**（应作者验证 Swagger UI 需求，用不设超时的方式启动）。
+- 下一步：**阶段 2（批 0–4）全部完成**，等待作者确认；之后进入阶段 3「前端模块一：全局导航与主题」。
+
 ---
 
 ## 报错记录

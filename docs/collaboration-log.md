@@ -28,7 +28,7 @@
 | 0 | 需求确认与技术选型 | 已完成（未写代码） | `ai-log.md` → 阶段 0 |
 | 0.5 | 协作日志规范确认 | 已完成（问答轮） | `ai-log.md` → 阶段 0.5 |
 | 1 | 目录结构与占位文件 | **已完成**：批 1 ✅ ／ 批 2 ✅ ／ 批 3 ✅ ／ 批 4 ✅（作者全部确认通过） | 本文件 → 五、阶段记录；`ai-log.md` → 阶段 1 |
-| 2 | 后端业务实现（6 项基础 API + 统一返回 + Swagger） | 进行中：批 0 ✅ ／批 1 ✅ ／批 2a ✅ ／批 2b ✅ ／批 3 ✅（待作者确认）／批 4 待开工 | `ai-log.md` → 阶段 2 |
+| 2 | 后端业务实现（6 项基础 API + 统一返回 + Swagger） | **已完成**：批 0 ✅ ／批 1 ✅ ／批 2a ✅ ／批 2b ✅ ／批 3 ✅ ／批 4 ✅（待作者确认） | 本文件 → 五、阶段记录；`ai-log.md` → 阶段 2 |
 | 3 | 前端搭建（模块一：导航与主题） | 未开始 | — |
 | 4 | 前端模块二 / 三（列表、详情、Markdown、TOC） | 未开始 | — |
 | 5 | 前端模块四 / 五 / 六（搜索过滤、评论点赞、本地持久化） | 未开始 | — |
@@ -108,3 +108,20 @@
   - 作者侧：批 1、批 2、批 3、批 4 均已回复"通过"
 - **遗留问题**：见 `docs/current-state.md` 第五节。已解决：JDK 26 兼容性、Node 安装、后端启动与建表验证、第二次 git 提交（`25e280e`）、`docs/ai-log.md` 缺失的批 3/批 4 逐轮记录与报错记录 2/3（已按本文件记录补记）。未处理：`frontend/public/` 目录、全量种子文章（约 12 篇）、外键级联删除的实测、结束后台任务会残留派生 JVM、`--enable-native-access` 警告。
 - **下一步**：阶段 2 —— 后端五层业务实现（`common` / `model` / `repository` / `service` / `controller`），按 `docs/api-contract.md` v1.0 实现 health、文章 CRUD 与分页、标签、评论、点赞，并补 Swagger 注解与示例。
+
+### 阶段 2：后端业务实现（批 0–4，全部实测通过 · 待作者确认）
+
+- **我的提示词摘要**：
+  - 新会话开场要求"先不要写代码"，只读 6 份文档后用不超过 10 行总结现状；随后"分批列出需要的事项"；确认把原批 2 拆成 **2a 读路径 / 2b 写路径**；之后逐批下达"批 N 通过，提交并继续"。
+  - 期间作者报告并配合提供证据的真实故障 2 起：`cd: backend: No such file or directory`（终端目录错误）、浏览器打不开 Swagger UI（后端未启动）；另外要求补齐 `ai-log.md` 缺失的历史记录（批 3 / 批 4 阶段记录、报错记录 2 / 3）。
+- **AI 做了什么**：
+  1. **批 0（提交收尾）**：核对 git 现状，发现"第二次提交其实已存在"（`25e280e`），修正 `current-state.md`、`collaboration-log.md` 的过时描述，提交 `e9ab336`。
+  2. **批 1（`common` + `model` + `config`）**：先用 `javap` 核实 Boot 4.1.1 实际携带 **Jackson 3**（`tools.jackson.*`）与可用扩展点，再写 19 个文件（错误码 / 统一返回 / 业务异常 / 全局异常处理；4 实体 + 4 请求 DTO + 6 响应 VO；`JacksonConfig`），删 2 个占位。提交 `92a5cc6`。
+  3. **批 2a（文章读路径）**：新增 `ArticleRepository` / `TagRepository` / `ArticleService` / `TagService` / `HealthController` / `ArticleController` / `TagController` 与计划外的 `common/TimeFormats.java`（时间格式收敛为唯一定义）；13 项 curl 实测；实测中定位真实报错（mingw64 版 `curl` 把中文参数按 GBK 编码 → 服务端 UTF-8 解码失败 → 50000），给 `GlobalExceptionHandler` 补 `InvalidParameterException → 40002` 后复测通过。提交 `b22592d`。
+  4. **批 2b（文章写路径）**：补齐 insert / update / delete / 标签自动创建与清空 / 事务；用临时 JDBC 程序构造数据后实测 **外键级联删除真实生效**（遗留项 12 关闭）、重启后数据仍在（持久化）、摘要按码点截取 120 字。提交 `5c210a3`。
+  5. **批 3（评论与点赞）**：新增 `CommentRepository` / `LikeRepository` / `CommentService` / `LikeService` / `CommentController` / `LikeController` 与计划外的 `common/PageParams.java`（消除分页校验重复代码）；19 项实测，含点赞 / 取消**两端幂等**、visitorId 归属校验；按作者选择用接口删除上批实测文章 5。提交 `4b1700b`。
+  6. **批 4（收尾）**：新增 `OpenApiConfig`，给 5 个 controller 补 `@Tag` / `@Operation` / `@Parameter`；JDBC URL 追加 `busy_timeout=5000` 并实测生效；`README.md` 常见问题表补 native-access 一行；复测异常兜底 4 项。
+- **改动文件**：新增 35 个 Java 文件、修改 7 个 Java 文件（另修改 `backend/src/main/resources/application.yml`、`README.md`）；`docs/` 下四份文档多轮同步。
+- **验证命令与结果**（均有真实输出留档，详见 `ai-log.md` 各批）：`./mvnw -B -ntp compile` 每批 `BUILD SUCCESS`（最终 36 个源文件）；接口实测累计 **13 + 16 + 19 + 4 = 52 项**全部通过；级联删除、点赞幂等、时间格式 `2026-09-07T09:00:00`、未知路径 → 40004、方法不支持 → 40002、`PARAM` 校验 → 40001、`busy_timeout = 5000` 均实测通过。
+- **遗留问题**：见 `docs/current-state.md` 第五节。已解决：JDK 26 兼容性、Node 安装、第二次 git 提交、外键级联、契约相关遗留项 9（busy_timeout）与 12；剩余：WAL 未启用、`frontend/public/` 未创建、种子文章仅 3 篇、无鉴权（演示项目）、路径含空格。
+- **下一步**：阶段 3 —— 前端模块一（响应式导航、汉堡菜单、深浅色主题切换、当前页高亮、路由过渡）。
