@@ -1,29 +1,33 @@
 # 当前状态
 
 > 本文件是项目进度的**唯一实时快照**，每个阶段/批次结束后同步更新；**每个新会话开始时，请先读本文件**。
-> 最后更新：**阶段 4「前端模块二 / 三：文章列表与文章详情」批 1（`src/api/` 接口访问层）已完成**（批 0 开工基线已入库 `ec848f3`；批 1 的 14 项接口层实测全部通过，改动待作者确认后提交）；阶段 0–3 全部完成并入库。**下一步：批 2（文章列表）**。
+> 最后更新：**阶段 4「前端模块二 / 三：文章列表与文章详情」批 2（文章列表 + 首页门面）已完成**（批 0、批 1 已入库 `ec848f3` / `b6f7701`；批 2 经 10 项浏览器实测通过，改动待作者确认后提交）；阶段 0–3 全部完成并入库。**下一步：批 3（文章详情 + Markdown 渲染）**。
 
 ---
 
 ## 零、新会话接手说明（给下一个会话的 AI）
 
 1. **先读三个文件**：`AGENTS.md`（项目总纲与禁止事项）、`docs/current-state.md`（本文件）、`docs/api-contract.md`（接口契约 v1.0，**已确认**，实现时不得擅自改字段）。
-2. **进度**：阶段 0、0.5、1、2、3 已完成并入库；**阶段 4 批 0 已入库（`ec848f3`）、批 1 已完成但尚未提交**，**当前应从批 2「文章列表」开始**；后端 13 个操作已全部实现并实测（见第七节清单）；前端已具备导航栏 / 汉堡菜单 / 三态主题 / 404 / 路由过渡 / 页脚 + **`src/api/` 接口访问层**，**文章列表与详情仍是占位页**（`HomeView.vue`、`ArticlesView.vue`、`AboutView.vue` 里的说明文字即待办）；种子数据为 **12 篇文章 / 8 个标签**，封面为 `frontend/public/images/covers/*.svg`。
-3. **日志三件套**：`docs/ai-log.md`（逐轮流水）、`docs/collaboration-log.md`（关键提示词汇总 + 阶段索引 + 阶段记录）、`docs/debug-log.md`（报错专档，已有 **7 条**真实记录 + 8 条观察项）；审计记录在 `docs/audit-report.md`（阶段 9 才做）。
+2. **进度**：阶段 0、0.5、1、2、3 已完成并入库；**阶段 4 批 0、批 1 已入库（`ec848f3`、`b6f7701`），批 2 已完成但尚未提交**，**当前应从批 3「文章详情 / Markdown 渲染」开始**；后端 13 个操作已全部实现并实测（见第七节清单）；前端已有导航栏 / 汉堡菜单 / 三态主题 / 404 / 路由过渡 / 页脚 / 接口访问层 / **文章列表（卡片 + 骨架屏 + 空态 + 错误态 + 分页）+ 首页门面**；**唯一剩下的占位页是 `ArticleDetailView.vue`（批 3 填内容）**；种子数据为 **12 篇文章 / 8 个标签**，封面为 `frontend/public/images/covers/*.svg`。
+3. **日志三件套**：`docs/ai-log.md`（逐轮流水）、`docs/collaboration-log.md`（关键提示词汇总 + 阶段索引 + 阶段记录）、`docs/debug-log.md`（报错专档，已有 **7 条**真实记录 + 9 条观察项）；审计记录在 `docs/audit-report.md`（阶段 9 才做）。
 4. **环境事实**：Node 24.21.0 / npm 11.19.0 已安装；JDK 26 **已验证**可跑 Spring Boot 4.1.1；Maven 未安装但 `mvnw` 可用（依赖已缓存，后端启动约 2 秒）；**后端与前端 dev server 当前均处于停止状态**，需要时用第八节的标准命令启动。
 5. **协作纪律**：分批交付、每批结束停下等确认；未运行的命令写"未运行，需我验证"；不编造运行结果；禁止使用现成博客模板或整站主题。
-6. **本机已踩过的坑（细节都在 `docs/debug-log.md`）**：① Git Bash 里给 `curl` 传中文参数会被按 **GBK** 编码 → 改用预编码 UTF-8 百分号串、`node -e` 的 `fetch`，或用 Swagger UI / PowerShell `Invoke-RestMethod`；② `wc -m` 在本机按**字节**计数（要数中文长度得按码点算）；③ AI 的后台任务有 **10 分钟上限**，超时只杀包装进程、**派生 JVM / node 会继续存活**并占住 8080 / 5173（用 `taskkill //PID <pid> //F` 清理，阶段 3 复现 4 次、阶段 4 已复现 3 次）；④ 浏览器提示"拒绝连接"时，排查第一步永远是"确认服务是否真的在监听"；⑤ **内置浏览器在触摸仿真（mobile + touch）下合成的鼠标点击不送达页面**，移动端交互验证请优先用键盘路径，点按路径交作者真机验收；⑥ **固定 ID 的幂等种子数据遇到"历史遗留行占用同一 ID"会静默错位**（`INSERT OR IGNORE` 是整行跳过，不是更新）——扩写种子后必须核对真实数据，见 `debug-log.md` 报错记录 6；⑦ **启动后端前先查 8080**：端口被占不等于程序坏了（`Port 8080 was already in use` 见报错记录 7），前端经代理拿到 **502** 通常就是"后端不在监听"。
-7. **`src/api/` 用法**：`import { fetchArticles, fetchArticleDetail } from '@/api/articles'`、`import { fetchTags } from '@/api/tags'`；失败一律抛 `ApiError`（`code` / `status` / `fields`，并有 `isNotFound` / `isValidationError`）；视图层只需 `try/catch` 一个错误类型。**新增写接口时再建 `comments.js` / `likes.js`**（阶段 5），不要提前建空模块（阶段 9 审计含"死代码"检查项）。
+6. **本机已踩过的坑（细节都在 `docs/debug-log.md`）**：① Git Bash 里给 `curl` 传中文参数会被按 **GBK** 编码 → 改用预编码 UTF-8 百分号串、`node -e` 的 `fetch`，或用 Swagger UI / PowerShell `Invoke-RestMethod`；② `wc -m` 在本机按**字节**计数（要数中文长度得按码点算）；③ AI 的后台任务有 **10 分钟上限**，超时只杀包装进程、**派生 JVM / node 会继续存活**并占住 8080 / 5173（用 `taskkill //PID <pid> //F` 清理，阶段 3 复现 4 次、阶段 4 已复现 3 次）；④ 浏览器提示"拒绝连接"时，排查第一步永远是"确认服务是否真的在监听"；⑤ **内置浏览器的合成点击在部分元素上不送达**（主题按钮在移动仿真与桌面模式下都点不动，键盘 `Tab` + `Enter` 立刻成功；分页按钮与重试按钮的点按是有效的）→ 交互验证优先键盘路径，移动端点按交作者真机；⑥ **路由过渡中间帧读不到"带过渡的子树"**（`page.text.snapshot` / `page.elements.snapshot` 只会读到页头，`wait_for` 文本条件会一直超时，但同期截图正常）→ 先截图确认画面再读结构；⑦ **固定 ID 的幂等种子数据遇到"历史遗留行占用同一 ID"会静默错位**（`INSERT OR IGNORE` 是整行跳过，不是更新），见报错记录 6；⑧ **启动后端前先查 8080**：端口被占不等于程序坏了（见报错记录 7），前端经代理拿到 **502** 通常就是"后端不在监听"。
+7. **前端代码地图（阶段 4 现状）**：
+   - `src/api/`：`http.js`（`request()` 统一入口 + 超时 + 解包 + 错误归一，502 有专门文案）、`error.js`（`ApiError` + `isNotFound` / `isValidationError`）、`articles.js`（`fetchArticles` / `fetchArticleDetail`）、`tags.js`（`fetchTags`）；**写接口的 `comments.js` / `likes.js` 等阶段 5 用到时再建**（决策 AB，避免死代码）。
+   - `src/components/`：`ArticleList.vue`（四态容器：加载 / 出错 + 重试 / 空结果 / 有数据）、`ArticleCard.vue`（封面 + 标题 + 摘要 + 标签 + 日期 + 点赞评论数，整卡可点）、`ArticleSkeleton.vue`（骨架 + 流光）、`Pagination.vue`；导航与主题组件仍为阶段 3 产物。
+   - `src/utils/date.js`：契约 ISO 串 → `YYYY-MM-DD`（刻意不用 `new Date()`，避免时区解释坑）。
+   - 路由：`/`、`/articles`、`/articles/:id`（当前是占位页）、`/about` + 404 兜底；列表页页码与地址栏 `?page=N` 双向同步（第 1 页不带参数）。
 
 ---
 
 ## 一、当前阶段
 
-**阶段 4「前端模块二 / 三：文章列表与文章详情」：进行中 —— 批 0 ✅（已入库）、批 1 ✅（待提交确认），等作者确认后进入批 2。**
+**阶段 4「前端模块二 / 三：文章列表与文章详情」：进行中 —— 批 0 ✅（已入库）、批 1 ✅（已入库）、批 2 ✅（待提交确认），等作者确认后进入批 3。**
 阶段 0–3 全部完成并入库（阶段 3 的点按路径与过渡观感已由作者验收，见第五节第 13、14 条）。
 
 阶段 4 分批（作者已同意方案与 10 个决策点，见第二节决策 R–AA）：
-批 0 开工基线 ✅ → 批 1 API 访问层 ✅ → 批 2 文章列表（卡片 / 悬停动效 / 骨架屏 / 分页控件 / 首页门面）→ 批 3 文章详情（Markdown 渲染 + 代码高亮 + 错误分流）→ 批 4 加分项（TOC + 滚动高亮 + IntersectionObserver 进场 + 图片懒加载）→ 批 5 收尾与文档。
+批 0 开工基线 ✅ → 批 1 API 访问层 ✅ → 批 2 文章列表（卡片 / 悬停动效 / 骨架屏 / 空态与错误态 / 分页控件 / 首页门面）✅ → 批 3 文章详情（Markdown 渲染 + 代码高亮 + 错误分流）→ 批 4 加分项（TOC + 滚动高亮 + IntersectionObserver 进场 + 图片懒加载）→ 批 5 收尾与文档。
 
 ---
 
@@ -42,7 +46,8 @@
 | 阶段 3 批 3 | 移动端汉堡菜单 + 滚动样式变化 | `AppHeader.vue` 重写（`aria-expanded` / `aria-controls`、Esc、焦点进出、遮罩、`backdrop-filter` 页头）+ `--color-bg-header`。375×667 实测折叠 / 键盘开合 / Esc / 滚动模糊，桌面无回归；提交 `b1a517f` |
 | 阶段 3 批 4 | 路由过渡 + 页脚拆分 + 文档同步（阶段 3 收尾） | 新建 `components/AppFooter.vue`；`App.vue` 加 `<Transition name="page" mode="out-in">`；`base.css` 加 `.page-*`；`README.md` 与四份 docs 同步；提交 `378e3b0` |
 | 阶段 4 批 0 | 开工基线：三项申请落地 + 种子数据 + 数据库重建 | 新建 `frontend/public/`（favicon + 12 张自绘封面 SVG，共 13 个文件）；`data.sql` 由 3 篇扩为 **12 篇 + 8 标签 + 23 条关联**并加封面回填；`index.html` 引用 favicon；数据库按标准路径重置重建，接口实测 `total=12` / `tags=8` / 封面 12/12 / 二次启动幂等；`npm run build` 基线 **41 模块 / 137ms**；提交 `ec848f3`（20 文件）。**修掉 1 个真实数据问题**（报错记录 6） |
-| 阶段 4 批 1 | `src/api/` 接口访问层（本次） | 新建（完整）`src/api/http.js`（统一 `/api` + 查询串 URI 编码 + 8s 超时 + 外部 signal 转发 + `{code,message,data}` 解包 + 五类失败归一）、`src/api/error.js`（`ApiError` + `isNotFound` / `isValidationError`）、`src/api/articles.js`（列表 / 详情 + ID 前置校验）、`src/api/tags.js`；删除 `src/api/.gitkeep`；**14 项真实调用用例全通过**（经 Vite 代理打到后端）；`npm run build` 41 模块 / 126ms。**期间遇到并记录 1 个真实启动故障**（报错记录 7） |
+| 阶段 4 批 1 | `src/api/` 接口访问层 | 新建（完整）`src/api/http.js`、`error.js`、`articles.js`、`tags.js`；删除 `src/api/.gitkeep`；**14 项真实调用用例全通过**（经 Vite 代理打到后端）；`npm run build` 41 模块 / 126ms；提交 `b6f7701`（10 文件）。**期间遇到并记录 1 个真实启动故障**（报错记录 7） |
+| 阶段 4 批 2 | 文章列表 + 首页门面（本次） | 新建（完整）`src/utils/date.js`、`src/components/{ArticleCard,ArticleSkeleton,ArticleList,Pagination}.vue`；新建（**占位**）`src/views/ArticleDetailView.vue` + 路由 `/articles/:id`；重写（完整）`src/views/{ArticlesView,HomeView}.vue`；`http.js` 补 502 文案；删除 `src/utils/.gitkeep`；`npm run build` **55 模块 / 156ms**；**10 项浏览器实测通过**（首页、列表、翻页、深链、空态、错误态 + 重试、移动端、暗色、悬停、骨架屏） |
 
 **关键决策记录（作者已确认）**
 
@@ -76,13 +81,14 @@
 | Z | 滚动实现：TOC 当前小节高亮用 `scroll` + `getBoundingClientRect`，进场动画用 `IntersectionObserver`；复用逻辑仍放 `src/utils/`，**不新增 `src/` 子目录**（延续决策 P） |
 | AA | 种子数据暴露的 tag ID 冲突（`id=5` 被阶段 2 残留标签占用）**采用标准重置路径解决**：停服 → 删 `blog.db` → 重启自动重建（作者确认，属不可恢复操作，见报错记录 6） |
 | AB | 批 1 **只建 `http.js` / `error.js` / `articles.js` / `tags.js`**；`comments.js` / `likes.js` 推迟到阶段 5（用到时再建），理由是避免死代码（阶段 9 审计含"死代码"检查项） |
+| AC | 批 2 就**先加 `/articles/:id` 路由 + 占位详情页**，让列表卡片的链接有落点而不是掉进 404；正文渲染留批 3（沿用阶段 3 建占位页的既有做法） |
 
 ---
 
 ## 三、待确认 / 待执行
 
-1. **阶段 4 批 1 已就绪**：改动**尚未 git 提交**（等作者"批 1 通过，提交并继续"）；
-2. **批 2 起为纯实现**：列表 → 详情 → TOC/动效 → 收尾文档；无需再申请新目录（`src/api/`、`src/utils/` 已存在，`src/utils/.gitkeep` 仍保留待批 2/4 使用）；
+1. **阶段 4 批 2 已就绪**：改动**尚未 git 提交**（等作者"批 2 通过，提交并继续"）；
+2. **批 3–5 为纯实现**：详情 + Markdown → 加分项（TOC / 动效 / 懒加载）→ 收尾文档；无需再申请新目录（`src/api/`、`src/utils/`、`src/components/` 均已存在）；
 3. **无待作者补验项**：第 13、14 条（过渡观感、触摸点按路径）已由作者验收（第五节）；
 4. **可选未做项**（不阻塞）：SQLite WAL 模式（连接池为 1，收益有限）；契约标为阶段 8 的可选项（`GET` / `PUT /api/comments/{id}`、`GET /api/articles/{id}/adjacent`、标签管理 `POST` / `PUT` / `DELETE /api/tags`、`view_count` 计数）。
 
@@ -108,10 +114,11 @@
 |---|---|---|
 | 批 0 ✅ | 开工基线（已入库 `ec848f3`） | 新建（完整）`frontend/public/favicon.svg` + `images/covers/*.svg`（12 张自绘 SVG，390–1438 字节，结构校验无 `<text>` / 无外链 / 无 CSS 变量，**内置浏览器实拍 13 张全部正常渲染**）；修改（完整）`backend/src/main/resources/data.sql`（3→12 篇 + 8 标签 + 23 关联 + 封面回填）、`frontend/index.html`（新增 favicon 引用一行）；数据库按标准路径重置重建；`npm run build` 基线 41 模块 / 137ms，`dist/` 确认包含 13 个 SVG |
 | 批 0 实测明细 | 种子与数据库 | 重置后：`GET /api/tags` → 8 个（`1=项目日志(3) 2=Vue(3) 3=Spring Boot(4) 4=SQLite(3) 5=前端(4) 6=CSS(1) 7=后端(4) 8=Markdown(1)`）；`GET /api/articles?size=20&status=ALL` → `total=12`、封面 12/12 非空、无重复 id；`?tags=前端` → 4 篇；`?size=5&page=2` → 5 条（`ids=7,6,5,4,3`）；**二次重启数量不变 = 幂等**；契约长度核对：12 篇的 title / summary / content 全部在 1–100 / 0–200 / 1–50000 内 |
-| 批 1 ✅ | `src/api/` 接口访问层（待提交） | 新建（完整）`src/api/http.js`、`error.js`、`articles.js`、`tags.js`；删除 `src/api/.gitkeep`。**14 项真实调用用例 14/14 通过**（临时自测页经 Vite 代理 `/api` → 8080，验证后已删除）：正例 8 项（列表默认参数 `total=12`/3 条、中文标签 `tags=前端` 4 篇、多标签 `or`、多标签 `and` 2 篇且两篇都含 Vue+前端、`keyword=SQLite`、详情 id=1、标签 8 个、`size=5&page=3` 2 条）；异常 6 项（详情 999999 → `code=40004`/HTTP 404、`page=abc` → `40002`/400、`timeout=1ms` → "请求超时（1ms）"、未知路径 → `40004`、非法 ID 前置校验、外部 signal → "请求已取消"）。`npm run build` → 41 模块 / 126ms（api 层尚未被视图引用，故未进包） |
+| 批 1 ✅ | `src/api/` 接口访问层（已入库 `b6f7701`） | 新建（完整）`src/api/http.js`、`error.js`、`articles.js`、`tags.js`；删除 `src/api/.gitkeep`。**14 项真实调用用例 14/14 通过**（临时自测页经 Vite 代理 `/api` → 8080，验证后已删除）：正例 8 项（列表默认参数 `total=12`/3 条、中文标签 `tags=前端` 4 篇、多标签 `or`、多标签 `and` 2 篇且两篇都含 Vue+前端、`keyword=SQLite`、详情 id=1、标签 8 个、`size=5&page=3` 2 条）；异常 6 项（详情 999999 → `code=40004`/HTTP 404、`page=abc` → `40002`/400、`timeout=1ms` → "请求超时（1ms）"、未知路径 → `40004`、非法 ID 前置校验、外部 signal → "请求已取消"）。`npm run build` → 41 模块 / 126ms |
 | 批 1 期间故障 | 后端启动失败 | `APPLICATION FAILED TO START … Port 8080 was already in use`（8080 上已有一个 22:01:20 启动、非本会话启动的实例）；确认端口空闲后重启自己的实例完成验证；完整闭环见 `debug-log.md` 报错记录 7 |
-| 批 2 | 文章列表（卡片 / 悬停动效 / 骨架屏 / 空态与错误态 / 分页控件 / 首页门面） | 未开始 |
-| 批 3 | 文章详情（路由 `/articles/:id` + Markdown 渲染 + 代码高亮 + 404 与错误分流） | 未开始 |
+| 批 2 ✅ | 文章列表 + 首页门面（待提交） | 新建（完整）`utils/date.js`、`components/{ArticleCard,ArticleSkeleton,ArticleList,Pagination}.vue`；新建（占位）`views/ArticleDetailView.vue` + 路由 `/articles/:id`；重写（完整）`views/{ArticlesView,HomeView}.vue`；`api/http.js` 补 502 文案；删除 `utils/.gitkeep`；`npm run build` **55 模块 / 156ms**（首页与列表页共享 `articles-*.js` 4.93 kB + `articles-*.css` 3.98 kB） |
+| 批 2 实测明细 | 浏览器 10 项（桌面 1280×800 + iPhone SE 375×667） | ① 首页：hero 简介 + 3 张最新卡片（封面/标题/摘要/标签/日期/点赞评论数均来自后端）；② `/articles`：`共 12 篇文章` + 10 张卡片 + 分页（当前页禁用上一页）；③ 点「第 2 页」→ URL `?page=2`、2 张卡片、下一页禁用；④ **深链刷新** `?page=2` → 仍 2 张卡片；⑤ `?page=99` → 空态「这一页没有文章」+ 分页可用；⑥ **错误态与重试**：停后端 → `文章列表加载失败 / 无法连接后端服务（HTTP 502），请确认后端已在 http://localhost:8080 运行` + `role="alert"` + 重试按钮；重启后端后点「重试」→ 卡片与分页恢复；⑦ 375×667 单列卡片 + 汉堡菜单无溢出；⑧ 暗色主题卡片配色正确；⑨ 悬停：卡片上浮 + 阴影加强 + 标题变主题蓝（截图对比）；⑩ 骨架屏在亮 / 暗两套主题下并排渲染正确（临时页，验证后删除） |
+| 批 3 | 文章详情（Markdown 渲染 + 代码高亮 + 404 与错误分流 + 阅读进度条留批 4） | 未开始 |
 | 批 4 | 加分项（TOC + 滚动高亮 + IntersectionObserver 进场动画 + 图片懒加载） | 未开始 |
 | 批 5 | 收尾（构建实测 + 浏览器实拍 + README/docs 同步 + 提交） | 未开始 |
 
@@ -130,13 +137,15 @@
 | 7 | ~~种子文章仅 3 篇~~ **已解决** | — | 阶段 4 批 0 补齐为 **12 篇 + 8 标签 + 23 条关联**，`INSERT OR IGNORE` 幂等（二次启动实测数量不变） |
 | 8 | 后端未做鉴权（演示项目） | 公网部署有风险 | 已在 `application.yml`、`AGENTS.md`、`README.md`、Swagger 描述中标注 |
 | 9 | ~~SQLite 的 `busy_timeout` 未设置~~ **部分解决** | — | `busy_timeout=5000` 已生效；**WAL 仍未启用**，需要时在 `connection-init-sql` 追加 `PRAGMA journal_mode = WAL` |
-| 10 | 结束后台任务会留下派生进程（JVM / node），或**启动前 8080 已有别的实例** | 下次启动报端口占用 / 前端经代理拿到 502 | 阶段 3 复现 4 次；阶段 4 复现 3 次（批 0 两次 JVM/node 残留，批 1 一次 8080 被非本会话实例占用，见报错记录 7）；统一流程：`netstat -ano \| grep ":端口" \| grep -i listening` 取 PID 后 `taskkill //PID <pid> //F` |
+| 10 | 结束后台任务会留下派生进程（JVM / node），或**启动前 8080 已有别的实例** | 下次启动报端口占用 / 前端经代理拿到 502 | 阶段 3 复现 4 次；阶段 4 已复现 3 次（批 0 两次 JVM/node 残留，批 1 一次 8080 被非本会话实例占用，见报错记录 7）；统一流程：`netstat -ano \| grep ":端口" \| grep -i listening` 取 PID 后 `taskkill //PID <pid> //F` |
 | 11 | ~~JDK 26 提示 native-access 警告~~ **已处理** | — | 结论：仅警告，不写进标准启动命令；`README.md`《常见问题排查》已说明 |
 | 12 | ~~外键约束是否在应用连接上真正打开未验证~~ **已解决** | — | 批 2b 实测：删除文章后 `comment` / `like_record` / `article_tag` 计数全部归 0 |
 | 13 | ~~过渡动画的**观感**（时长 / 缓动）与 `prefers-reduced-motion` 禁用未由 AI 实测~~ **作者已验收** | — | 作者在阶段 4 开工时回复"遗留问题已验收完毕"，AI 按本条与第 14 条（仅有的两项"待作者补验"）理解为验收通过；如作者指的是其他条目，请指出，AI 再更正本节 |
 | 14 | ~~触摸点按路径未由 AI 实测（工具限制）~~ **作者已验收** | — | 同上；工具限制记录保留在 `debug-log.md` 观察项（后续移动端验证仍建议键盘路径优先） |
 | 15 | 种子数据的固定 tag ID 与历史残留行冲突（`id=5`） | **已解决** | 阶段 4 批 0 发现并重置重建，详见 `debug-log.md` 报错记录 6；**教训**：扩写固定 ID 的种子后必须核对真实数据 |
-| 16 | 前端接口层暂无自动化回归（用临时自测页验证，页已删除） | 后续每批仍需人工跑一遍 | 保留做法：需要时再建临时自测页（经 Vite 代理真实打后端），验证后删除；如阶段 9 有余量再考虑固化 |
+| 16 | 前端接口层与页面暂无自动化回归（靠临时自测页 / 临时预览页 + 人工浏览器验证，页均删除） | 后续每批仍需人工跑一遍 | 保留做法：需要时再建临时页（经 Vite 代理真实打后端），验证后删除；如阶段 9 有余量再考虑固化 |
+| 17 | 列表页 `?page` 超过总页数时只显示空态，不会回退到最后一页 | 手输极端页码时体验一般 | 阶段 4 批 5 或阶段 7 视余量决定是否加"越界回退"；当前不做（空态 + 上一页可用） |
+| 18 | 骨架屏的**出现时机**未能在真机抓拍（本地请求约 10ms，一闪而过） | 只能证明骨架屏渲染正确，不能证明"加载期间显示多久" | 骨架屏外观已在亮 / 暗两套主题下独立验证（批 2 实测 ⑩）；真实加载时长在阶段 7 做无限滚动时可一并观察 |
 
 ---
 
@@ -152,12 +161,12 @@
 | 后端依赖 | Spring Boot 4.1.1（Web 起步依赖为 **spring-boot-starter-webmvc**）、Spring 7.0.9、Tomcat 11.0.24、sqlite-jdbc 3.53.4.0、springdoc-openapi-starter-webmvc-ui 3.1.1、**Jackson 3**（`tools.jackson.core:jackson-databind:3.1.5`） |
 | 数据库 | `backend/data/blog.db`（阶段 4 批 0 按标准路径重置重建）；6 张表 + 7 个索引；`article=12`、`tag=8`、`article_tag=23`；12 篇 `cover_url` 全部非空；二次启动数量一致（幂等）；JDBC URL 已带 `busy_timeout=5000` |
 | 前端静态资源 | `frontend/public/favicon.svg`（390 字节）+ `frontend/public/images/covers/*.svg`（12 张，652–1438 字节）；`index.html` 已引用 favicon；`npm run build` 会把它们复制进 `dist/`（已实测） |
-| 前端接口层 | `frontend/src/api/`：`http.js`（`request()` 统一入口 + `ApiError` 抛出）、`error.js`（`ApiError` 定义与便捷判定）、`articles.js`（`fetchArticles` / `fetchArticleDetail`）、`tags.js`（`fetchTags`）；默认超时 8s；`src/api/.gitkeep` 已删除 |
-| 服务状态 | **后端与前端 dev server 均已停止**（批 1 验证后复查 `5173/8080 均已释放`） |
+| 前端接口层 | `frontend/src/api/`：`http.js`（`request()` 统一入口 + `ApiError` 抛出，502/503/504 有可操作文案）、`error.js`（`ApiError` + `isNotFound` / `isValidationError`）、`articles.js`（`fetchArticles` / `fetchArticleDetail`）、`tags.js`（`fetchTags`）；默认超时 8s；`src/api/.gitkeep` 已删除 |
+| 服务状态 | **后端与前端 dev server 均已停止**（批 2 验证后复查 `5173/8080 均已释放`） |
 | 网络 | `start.spring.io`、`registry.npmjs.org`、`repo.maven.apache.org`、`repo1.maven.org` 可达；`github.com` 不可达（报错记录 1） |
-| Git 仓库 | 分支 `main`；提交链：`501065a` → `25e280e` → `e9ab336` → `92a5cc6` → `b22592d` → `5c210a3` → `4b1700b` → `7174838` → `af2334c` → `8c5923d` → `7de72da` → `b257499` → `b1a517f` → `378e3b0` → `550f576` → `ec848f3`（阶段 4 批 0）；**阶段 4 批 1 改动尚未提交**（`git status`：1 个 `D`（`src/api/.gitkeep`）+ 4 个 `??`，全部在预期范围内） |
-| 前端构建基线 | 阶段 4 批 1 实测：`npm run build` → `✓ 41 modules transformed` / `✓ built in 126ms`；`index css 6.46 kB`、主包 `index-*.js 106.33 kB / gzip 41.62 kB`、`dist/index.html 1.36 kB`；四个视图各自独立 chunk；**`src/api/` 尚未被任何视图引用，故暂未进包**（批 2 接入后会变化） |
-| 前端页面结构 | 三条正式路由（`/`、`/articles`、`/about`）+ 404 兜底；页头 / 主内容 / 页脚三段式；主题键 `blog:theme`；**阶段 4 将新增 `/articles/:id`** |
+| Git 仓库 | 分支 `main`；提交链：`501065a` → `25e280e` → `e9ab336` → `92a5cc6` → `b22592d` → `5c210a3` → `4b1700b` → `7174838` → `af2334c` → `8c5923d` → `7de72da` → `b257499` → `b1a517f` → `378e3b0` → `550f576` → `ec848f3`（批 0）→ `b6f7701`（批 1）；**阶段 4 批 2 改动尚未提交**（`git status`：5 个 `M` + 5 个 `??` + 1 个 `D`，全部在预期范围内） |
+| 前端构建基线 | 阶段 4 批 2 实测：`npm run build` → `✓ 55 modules transformed` / `✓ built in 156ms`（收尾复跑 135ms）；共享 chunk `articles-*.js 4.93 kB` + `articles-*.css`；主包 `index-*.js 106.74 kB / gzip 41.76 kB`、`index css 6.46 kB`、`dist/index.html 1.36 kB`；五个视图各自独立 chunk |
+| 前端页面结构 | 四条正式路由（`/`、`/articles`、`/articles/:id`、`/about`）+ 404 兜底；页头 / 主内容 / 页脚三段式；主题键 `blog:theme`；列表页页码与 `?page=N` 同步；组件：`ArticleList`（四态容器）、`ArticleCard`、`ArticleSkeleton`、`Pagination`、`AppHeader`、`AppFooter`、`ThemeToggle` |
 
 ---
 
@@ -206,4 +215,4 @@ cd frontend && npm install && npm run dev
 
 访问地址：前端 http://localhost:5173 ｜ 后端 http://localhost:8080 ｜ Swagger UI http://localhost:8080/swagger-ui/index.html ｜ API 前缀 `/api`（前端经 Vite 代理）。
 
-> 贴士：① 路径含空格，`cd` 时**必须加引号**；② 后端只在**运行期间**才能访问 `/api/*` 与 Swagger UI（报错记录 5 的教训）；③ **启动后端前先查 8080**——`netstat -ano | grep ":8080" | grep -i listening`，若已有实例在跑就是"端口被占"而不是"程序坏了"（报错记录 7）；确实要换端口再改 `application.yml` 的 `server.port` 与 `vite.config.js` 的代理 target；④ 停服务后如仍有进程占端口：`netstat -ano | grep ":5173" | grep -i listening`（或 `:8080`）查到 PID 后 `taskkill //PID <pid> //F`；⑤ 数据库重置＝停服 → 删除 `backend/data/blog.db`、`blog.db-wal`、`blog.db-shm` → 重启（会丢数据，属不可恢复操作；阶段 4 批 0 用过一次）；⑥ 主题等本地数据重置＝DevTools → Application → Local Storage → 删除 `blog:` 前缀的键（阶段 5 会提供页面内重置按钮）；⑦ Git Bash 里的 `curl` 传中文会被按 GBK 编码，验证中文查询参数请用 `node -e` 的 `fetch`、Swagger UI 或 PowerShell；⑧ 前端经代理请求后端返回 **502** 时，先去确认后端是否还在监听。
+> 贴士：① 路径含空格，`cd` 时**必须加引号**；② 后端只在**运行期间**才能访问 `/api/*` 与 Swagger UI（报错记录 5 的教训）；③ **启动后端前先查 8080**——`netstat -ano | grep ":8080" | grep -i listening`，若已有实例在跑就是"端口被占"而不是"程序坏了"（报错记录 7）；确实要换端口再改 `application.yml` 的 `server.port` 与 `vite.config.js` 的代理 target；④ 停服务后如仍有进程占端口：`netstat -ano | grep ":5173" | grep -i listening`（或 `:8080`）查到 PID 后 `taskkill //PID <pid> //F`；⑤ 数据库重置＝停服 → 删除 `backend/data/blog.db`、`blog.db-wal`、`blog.db-shm` → 重启（会丢数据，属不可恢复操作；阶段 4 批 0 用过一次）；⑥ 主题等本地数据重置＝DevTools → Application → Local Storage → 删除 `blog:` 前缀的键（阶段 5 会提供页面内重置按钮）；⑦ Git Bash 里的 `curl` 传中文会被按 GBK 编码，验证中文查询参数请用 `node -e` 的 `fetch`、Swagger UI 或 PowerShell；⑧ 前端经代理请求后端返回 **502** 时，先去确认后端是否还在监听；⑨ 列表页第 2 页可直接访问 http://localhost:5173/articles?page=2 验证深链。

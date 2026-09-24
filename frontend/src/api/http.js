@@ -20,6 +20,12 @@ function buildQuery(query) {
 }
 
 function toApiError(payload, status) {
+  // 网关类状态码：本项目里 Vite 代理连不上后端时会回 502，此处给出可操作的提示，而不是干巴巴的 HTTP 码
+  if (!payload && (status === 502 || status === 503 || status === 504)) {
+    return new ApiError(`无法连接后端服务（HTTP ${status}），请确认后端已在 http://localhost:8080 运行`, {
+      status
+    })
+  }
   const message = (payload && payload.message) || `请求失败（HTTP ${status}）`
   const fields = payload && payload.data && payload.data.fields ? payload.data.fields : null
   return new ApiError(message, { code: payload ? payload.code : null, status, fields })

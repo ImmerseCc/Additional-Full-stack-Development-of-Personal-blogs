@@ -18,6 +18,13 @@ const routes = [
     meta: { title: '文章列表' }
   },
   {
+    // 详情页（阶段 4 批 2 建路由 + 占位页，批 3 实现内容）
+    path: '/articles/:id',
+    name: 'article-detail',
+    component: () => import('@/views/ArticleDetailView.vue'),
+    meta: { title: '文章详情' }
+  },
+  {
     path: '/about',
     name: 'about',
     component: () => import('@/views/AboutView.vue'),

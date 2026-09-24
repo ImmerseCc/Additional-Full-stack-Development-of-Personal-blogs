@@ -386,3 +386,27 @@
 - 验证命令与结果（均为实测输出）：提交 `ec848f3`（`git log` 可查）；临时自测页 14 项用例 **14/14 PASS**（正例与异常码全部符合契约：40004 / 40002 / 超时 / 取消）；`npm run build` → `✓ 41 modules transformed` / `✓ built in 126ms`（api 层尚未被视图引用，故未进包）；收尾 `netstat` 复查 `5173/8080 均已释放`。
 - 遗留问题：本批改动**尚未 git 提交**（等作者"批 1 通过"）；`src/utils/.gitkeep` 仍保留（批 2 / 批 4 会用到 `src/utils/`）；前端接口层暂无自动化回归（沿用"临时自测页 + 验证后删除"的做法，见 `current-state.md` 遗留项 16）。
 - 下一步：阶段 4 批 2 —— 文章列表：`src/components/ArticleCard.vue`（卡片 + 悬停动效）、`ArticleList.vue`（loading / 空态 / 错误态）、骨架屏组件、`Pagination.vue`（决策 S）、重写 `views/ArticlesView.vue` 与 `views/HomeView.vue`（决策 T：首页＝简介 + 最新 3–5 篇 + 入口），`src/utils/` 放日期格式化与标签串组装。
+
+### 阶段 4：前端模块二 / 三（批 2：文章列表 + 首页门面）
+- 我的提示词摘要："**确认决策 AB，批 1 通过，请继续**"——先提交批 1，再执行批 2（文章列表：卡片 / 悬停动效 / 骨架屏 / 空态与错误态 / 分页控件 / 首页门面）。
+- AI 做了什么：
+  1. **提交批 1**：`b6f7701 feat(frontend): 阶段 4 批 1 接口访问层（统一请求封装 + 错误归一 + 文章/标签接口）`，10 个文件（含删除 `src/api/.gitkeep`）；
+  2. **批 2 实现**：新建 `src/utils/date.js`（契约 ISO 串 → `YYYY-MM-DD`，刻意不用 `new Date()`）；`src/components/ArticleCard.vue`（16:9 封面 + `loading="lazy"`、标题 / 摘要 / 标签 / 日期 / 点赞评论数、**整卡可点**（标题链接 `::after` 覆盖整卡）、悬停上浮 + 封面微缩放 + 标题变主题色，`@media (hover: hover)` 防触屏悬停残留，`:focus-within` 给键盘反馈，`coverUrl` 为空时用主题色渐变占位）；`ArticleSkeleton.vue`（与卡片同构 + 流光动画，`aria-hidden`，动效走 CSS 变量故 reduced-motion 下自动失效）；`ArticleList.vue`（**四态容器**：加载中（`aria-busy` + 骨架）/ 出错（`role="alert"` + 重试按钮）/ 空结果 / 有数据）；`Pagination.vue`（上一页 / 页码窗口 + 省略号 / 下一页，只有一页时整块不渲染，`aria-current="page"`）；
+  3. 重写 `views/ArticlesView.vue`（真实调用 `GET /api/articles`，`size=10`；页码与地址栏 `?page=N` 双向同步、第 1 页不带参数；非法 page 值按第 1 页处理；**请求序号守卫**丢弃过期响应）与 `views/HomeView.vue`（决策 T：hero 简介 + 最新 3 篇 + 「查看全部」入口，复用同一列表与骨架）；
+  4. 新建**占位** `views/ArticleDetailView.vue` 并加路由 `/articles/:id`（决策 AC）——让批 2 的卡片链接有落点而不是掉进 404，正文渲染留批 3；
+  5. `api/http.js` 补一条：502/503/504 且无响应体时给出"无法连接后端服务（HTTP 502），请确认后端已在 http://localhost:8080 运行"，把错误态文案变成可操作的提示；
+  6. 删除 `src/utils/.gitkeep`；`npm run build` → **55 模块 / 156ms**（首页与列表页共享 `articles-*.js` 4.93 kB + `articles-*.css`）；
+  7. **真实浏览器验证 10 项**（桌面 1280×800 + iPhone SE 375×667），全部通过。
+- 改动文件：
+  - 新建（**完整**）：`frontend/src/utils/date.js`、`frontend/src/components/ArticleCard.vue`、`ArticleSkeleton.vue`、`ArticleList.vue`、`Pagination.vue`
+  - 新建（**占位**）：`frontend/src/views/ArticleDetailView.vue`
+  - 修改（**完整**）：`frontend/src/views/ArticlesView.vue`、`frontend/src/views/HomeView.vue`、`frontend/src/router/index.js`（加 `/articles/:id`）、`frontend/src/api/http.js`（502 文案）
+  - 删除：`frontend/src/utils/.gitkeep`
+  - 文档：`docs/current-state.md`、`docs/ai-log.md`（本条目）、`docs/debug-log.md`（观察项 2 条）、`docs/collaboration-log.md`
+- 验证命令与结果（均为实测输出）：
+  - `npm run build` → `✓ 55 modules transformed` / `✓ built in 156ms`（收尾复跑 135ms）；`dist/` 确认无临时页残留
+  - 浏览器实测：① 首页 hero + 3 张最新卡片（封面/标题/摘要/标签/日期/点赞评论数均来自后端）；② `/articles` 显示 `共 12 篇文章` + 10 张卡片 + 分页（当前页禁用上一页）；③ 点「第 2 页」→ URL 变 `/articles?page=2`、2 张卡片、下一页禁用；④ 深链刷新 `?page=2` 仍 2 张；⑤ `?page=99` → 空态「这一页没有文章」；⑥ **错误态与重试**：停后端 → `文章列表加载失败 / 无法连接后端服务（HTTP 502）…` + `role="alert"` + 重试；重启后端点「重试」→ 卡片与分页恢复；⑦ 375×667 单列 + 汉堡菜单无溢出；⑧ 暗色主题卡片配色正确；⑨ 悬停：上浮 + 阴影加强 + 标题变主题蓝（截图对比）；⑩ 骨架屏在亮 / 暗两套主题下并排渲染正确（临时页，验证后删除）
+  - 收尾：停服 + 清理派生进程，复查 `5173/8080 均已释放`
+- 期间遇到的两个**工具限制**（非项目缺陷，已记入 `debug-log.md` 观察项）：① 主题按钮的合成点击在桌面模式下也不生效，改用键盘 `Tab` + `Enter` 立刻成功（分页与重试按钮的点按是有效的）；② 路由过渡中间帧读取 DOM 只读到页头、`wait_for` 文本条件超时，一度误判"深链刷新后页面空白"，用截图复核后确认页面正常。
+- 遗留问题：本批改动**尚未 git 提交**（等作者"批 2 通过"）；`?page` 超过总页数时只显示空态、不回退最后一页（遗留项 17）；骨架屏的"出现时机"未能真机抓拍（本地请求 ~10ms，遗留项 18）；前端仍无自动化回归（遗留项 16）。
+- 下一步：阶段 4 批 3 —— 文章详情：`src/utils/markdown.js`（markdown-it + highlight.js + DOMPurify，自写标题 `id` 规则，决策 X）+ `src/components/MarkdownRenderer.vue` + 重写 `ArticleDetailView.vue`（加载 / 404 / 错误分流），代码高亮用**手写的亮 / 暗两套配色**（决策 V），`prev` / `next` 区块不渲染（决策 U）。
