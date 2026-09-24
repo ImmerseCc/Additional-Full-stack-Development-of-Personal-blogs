@@ -1,9 +1,11 @@
 <script setup>
+import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { useThemeStore } from '@/stores/theme'
 
-// 根组件：页头（导航 + 主题按钮）+ 路由内容 + 页脚。
-// 路由过渡动画与页脚组件拆分在批 4 处理。
+// 根组件：页头（导航 + 主题按钮）+ 路由内容（带过渡）+ 页脚。
+// 路由过渡类 .page-* 定义在 src/styles/base.css，动效时长走 CSS 变量，
+// 因此 prefers-reduced-motion 下自动禁用（变量被归零）。
 const theme = useThemeStore()
 theme.init()
 </script>
@@ -12,11 +14,13 @@ theme.init()
   <div class="app-shell">
     <AppHeader />
     <main class="app-main">
-      <RouterView />
+      <RouterView v-slot="{ Component, route }">
+        <Transition name="page" mode="out-in">
+          <component :is="Component" :key="route.path" />
+        </Transition>
+      </RouterView>
     </main>
-    <footer class="app-footer">
-      <p>个人博客 · 手写 Vue 3 + Spring Boot（学习项目，未使用任何现成模板）</p>
-    </footer>
+    <AppFooter />
   </div>
 </template>
 
@@ -29,18 +33,5 @@ theme.init()
 
 .app-main {
   flex: 1;
-}
-
-.app-footer {
-  padding: 20px;
-  border-top: 1px solid var(--color-border);
-  color: var(--color-muted);
-  font-size: 0.9rem;
-  text-align: center;
-  transition: var(--transition-theme);
-}
-
-.app-footer p {
-  margin: 0;
 }
 </style>

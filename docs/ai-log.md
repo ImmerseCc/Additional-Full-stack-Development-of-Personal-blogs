@@ -328,3 +328,14 @@
   - 收尾：`TaskStop` 后残留 node PID 34536 仍监听 5173 → `taskkill` → 复查 `5173/8080 均已释放`（已知项 10 第四次复现）
 - 遗留问题：本批改动**尚未 git 提交**（等作者确认）；**工具限制（需作者补验）**：内置浏览器在"触摸仿真"下合成的鼠标点击**不送达页面**（点主题按钮与汉堡按钮均无事件，工具却报告 `clicked`），因此**触摸点按路径、遮罩点击关闭、点击链接后路由变化自动收起**未能在自动化里复现——需作者在真实浏览器 / 手机点按验收（点按与键盘走的是同一个 `click` 处理器，风险低）；"缩放窗口从窄屏切回宽屏自动收起"同样未实测（工具无法在同一标签内切换视口并保留 SPA 状态）。
 - 下一步：阶段 3 批 4 —— 路由过渡（`<router-view v-slot>` + `<transition>`，尊重 `prefers-reduced-motion`）、页脚组件拆分（可选）、`README.md` 与 `docs/*` 同步（含 `current-state.md` 第三节登记的 README 过时项）、`npm run build` + 三档自测、提交。
+
+### 阶段 3：前端模块一（批 4：路由过渡 + 收尾 —— 阶段 3 完成）
+- 我的提示词摘要："批 3 通过，提交并继续"——先提交批 3，再执行阶段 3 的收尾批（路由过渡 + 页脚拆分 + 文档同步）。
+- AI 做了什么：1) 提交批 3（`b1a517f`）；2) `App.vue` 改为 `<RouterView v-slot>` + `<Transition name="page" mode="out-in">`，以 `route.path` 作 key；3) 过渡类 `.page-enter-* / .page-leave-*` 写进 `base.css`（动效时长取 CSS 变量，因此 `prefers-reduced-motion` 下自动失效，无需额外分支）；4) 新建 `AppFooter.vue`，把页脚从 `App.vue` 拆出并补一行数据来源说明；5) `npm run build` + 内置浏览器实测（捕获到过渡中途帧与最终稳定态）；6) 同步 `README.md` 与 `docs/{current-state,ai-log,collaboration-log,debug-log}.md`。
+- 改动文件：新建（完整）`frontend/src/components/AppFooter.vue`；修改（完整）`frontend/src/App.vue`、`frontend/src/styles/base.css`、`README.md`、`docs/current-state.md`、`docs/collaboration-log.md`、`docs/debug-log.md`、`docs/ai-log.md`（本条目）。
+- 验证命令与结果（均为实测输出）：
+  - `npm run build` → `✓ built in 142ms`、`dist/assets/index-*.css 6.46 kB`（批 3 为 6.10 kB）、主包 `index-C9zBtVIY.js 106.33 kB`（批 3 为 99.83 kB，**多出的 ~6.5 kB 是 Vue 的 Transition 运行时——此前没用到过渡，被 tree-shaking 掉了**）
+  - 浏览器实测：首屏内容淡入（截图捕获到半透明中间态）→ 点击「文章列表」**捕获到过渡中途帧**（新页半透明、导航高亮与标签标题已切换）→ 随后稳定态完全正常（无残留 `opacity: 0`），页脚两行文案渲染正常
+  - 收尾：`TaskStop` 后残留 node PID 26488 占 5173 → `taskkill` → 复查 `5173/8080 均已释放`
+- 遗留问题：本批改动**尚未 git 提交**；**过渡的时长与缓动手感需作者目视评价**（工具只能抓到中间帧，无法评判观感）；`prefers-reduced-motion` 下动画禁用未实测（需在系统或 DevTools 开启"减少动态效果"复验）；批 3 遗留的**触摸点按路径**（开合菜单 / 遮罩关闭 / 点链接后自动收起）仍待作者真机补验。
+- 下一步：**阶段 3 全部完成，等待作者验收**；之后进入阶段 4 —— 前端模块二 / 三：文章列表（卡片、分页或无限滚动、骨架屏、悬停动效）+ 文章详情（Markdown 渲染、代码高亮、阅读进度条、TOC、图片懒加载），届时需实现 `src/api/` 请求层并申请新增 `frontend/public/`（封面图）与补齐全量种子文章。

@@ -143,6 +143,25 @@ samp {
   white-space: nowrap;
 }
 
+/* 路由过渡（阶段 3 批 4）：页面切换淡入淡出 + 轻微位移。
+   动效时长取自令牌，prefers-reduced-motion 下令牌被归零，动画随之失效。 */
+.page-enter-active,
+.page-leave-active {
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
 /* 尊重系统"减少动态效果"：把动效时长归零，后续阶段的过渡与动画直接继承这些变量 */
 @media (prefers-reduced-motion: reduce) {
   :root {

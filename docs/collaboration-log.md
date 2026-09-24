@@ -2,7 +2,7 @@
 
 > **与 `docs/ai-log.md` 的关系**：`ai-log.md` 是逐轮流水日志（唯一真相来源）；本文件是**成品视图**——把关键提示词汇总成可直接用于交付/答辩的表格，并给出阶段索引、报错/审计索引与阶段记录。
 > 两处的"关键提示词汇总"表保持同步；如出现不一致，**以 `docs/ai-log.md` 为准**。
-> 最后更新：阶段 2（批 0–4）已全部完成并实测通过；**阶段 3「前端模块一：全局导航与主题」批 0–批 3 已完成，批 4 待做**（点按路径待作者真机补验）。
+> 最后更新：阶段 2（批 0–4）与**阶段 3「前端模块一：全局导航与主题」（批 0–批 4）均已全部完成**并实测通过（阶段 3 的点按路径待作者真机补验）；**下一步进入阶段 4**。
 
 ---
 
@@ -29,7 +29,7 @@
 | 0.5 | 协作日志规范确认 | 已完成（问答轮） | `ai-log.md` → 阶段 0.5 |
 | 1 | 目录结构与占位文件 | **已完成**：批 1 ✅ ／ 批 2 ✅ ／ 批 3 ✅ ／ 批 4 ✅（作者全部确认通过） | 本文件 → 五、阶段记录；`ai-log.md` → 阶段 1 |
 | 2 | 后端业务实现（6 项基础 API + 统一返回 + Swagger） | **已完成**：批 0 ✅ ／批 1 ✅ ／批 2a ✅ ／批 2b ✅ ／批 3 ✅ ／批 4 ✅（待作者确认） | 本文件 → 五、阶段记录；`ai-log.md` → 阶段 2 |
-| 3 | 前端搭建（模块一：导航与主题） | **进行中**：批 0 ✅ ／ 批 1–4 待做 | 本文件 → 五、阶段记录（阶段结束时补）；`ai-log.md` → 阶段 3 |
+| 3 | 前端搭建（模块一：导航与主题） | **已完成**：批 0 ✅ ／ 批 1 ✅ ／ 批 2 ✅ ／ 批 3 ✅ ／ 批 4 ✅（待作者确认） | 本文件 → 五、阶段记录；`ai-log.md` → 阶段 3 |
 | 4 | 前端模块二 / 三（列表、详情、Markdown、TOC） | 未开始 | — |
 | 5 | 前端模块四 / 五 / 六（搜索过滤、评论点赞、本地持久化） | 未开始 | — |
 | 6 | 前后端对接（真实数据替换 mock） | 未开始 | — |
@@ -125,3 +125,17 @@
 - **验证命令与结果**（均有真实输出留档，详见 `ai-log.md` 各批）：`./mvnw -B -ntp compile` 每批 `BUILD SUCCESS`（最终 36 个源文件）；接口实测累计 **13 + 16 + 19 + 4 = 52 项**全部通过；级联删除、点赞幂等、时间格式 `2026-09-07T09:00:00`、未知路径 → 40004、方法不支持 → 40002、`PARAM` 校验 → 40001、`busy_timeout = 5000` 均实测通过。
 - **遗留问题**：见 `docs/current-state.md` 第五节。已解决：JDK 26 兼容性、Node 安装、第二次 git 提交、外键级联、契约相关遗留项 9（busy_timeout）与 12；剩余：WAL 未启用、`frontend/public/` 未创建、种子文章仅 3 篇、无鉴权（演示项目）、路径含空格。
 - **下一步**：阶段 3 —— 前端模块一（响应式导航、汉堡菜单、深浅色主题切换、当前页高亮、路由过渡）。
+
+### 阶段 3：前端模块一（全局导航与主题，批 0–批 4，实测通过 · 待作者确认）
+
+- **我的提示词摘要**：新会话开场要求"**先不要写代码**"，先读 6 份文件后用不超过 10 行总结现状；随后"分批列出需要的事项"；对阶段 3 分批方案（批 0–4）与 8 个决策点逐条确认（**1 同意 / 2 增加 404 页 / 3 三态主题 / 4 同意 / 5 同意 / 6 与 7 同意 / 8 不拆**）；之后逐批下达"批 N 通过，提交并继续"。
+- **AI 做了什么**：
+  1. **批 0（开工基线）**：更正 `README.md` 顶部状态块（阶段 1 / Node 未装 / 首次提交待执行 / 契约仍是草案等过时描述），同步 `current-state.md`、`collaboration-log.md`，追加 `ai-log.md` 条目；`npm run build` 基线 28 模块 / 160ms；提交 `8c5923d`。
+  2. **批 1（主题系统）**：新建 `stores/theme.js`（三态 + `localStorage['blog:theme']` + `matchMedia` 监听）、`components/ThemeToggle.vue`（内联 SVG 图标 + `aria-label` + live region）；`base.css` 扩展为完整主题令牌（语义色 / 阴影 / 尺寸 / 动效变量 / `color-scheme` / `:focus-visible` / `.visually-hidden` / reduced-motion 归零）；`App.vue` 临时挂载并初始化 store；删除 2 个 `.gitkeep`；提交 `7de72da`。
+  3. **批 2（导航栏 + 路由 + 404）**：新建 `AppHeader.vue`（品牌 + 首页 / 文章列表 / 关于 + 右侧主题按钮，`aria-current="page"` 高亮）与 `NotFoundView.vue`（完整 404）；`ArticlesView.vue` / `AboutView.vue` 为占位页；`router/index.js` 新增三条路由并在 `afterEach` 同步 `document.title`；`App.vue` 改三段式布局；`base.css` 加 `.page`；提交 `b257499`。
+  4. **批 3（移动端汉堡菜单 + 滚动样式变化）**：`AppHeader.vue` 重写（`aria-expanded` / `aria-controls`、Esc 关闭、遮罩点击、焦点进出、路由与断点变化自动收起、滚动超阈值后页头半透明 + `backdrop-filter`）；`base.css` 加 `--color-bg-header`；遮罩放在 `<header>` 之外以规避 `backdrop-filter` 成为 fixed 定位包含块；提交 `b1a517f`。
+  5. **批 4（路由过渡 + 收尾）**：新建 `AppFooter.vue`（页脚从 `App.vue` 拆出）；`App.vue` 加 `<RouterView v-slot>` + `<Transition name="page" mode="out-in">`；`base.css` 加 `.page-*` 过渡类（时长走令牌，故 reduced-motion 下自动失效）；同步 `README.md`（前端模块表、后端功能表、已知问题）与 `docs/*`（`current-state.md` 整份覆盖、`ai-log.md`、`debug-log.md` 观察项、本文件）。
+- **改动文件**：新建（完整）`frontend/src/stores/theme.js`、`components/{ThemeToggle,AppHeader,AppFooter}.vue`、`views/NotFoundView.vue`；新建（占位）`views/{ArticlesView,AboutView}.vue`；修改（完整）`frontend/src/{App.vue,router/index.js,styles/base.css}`；删除 2 个 `.gitkeep`；`README.md` 与 `docs/{current-state,ai-log,collaboration-log,debug-log}.md` 多轮同步。
+- **验证命令与结果**（均有真实输出留档，详见 `ai-log.md` 阶段 3 各批）：每批 `npm run build` 通过（28 → 31 → 39 模块，最终 `✓ built in 142ms`、`index css 6.46 kB`、主包 `106.33 kB / gzip 41.62 kB`，四个视图各自独立 chunk）；浏览器实测覆盖：三态主题循环与刷新不丢、四路径标题与当前页高亮、404 页、375×667 折叠与键盘开合、Esc 关闭、滚动后页头半透明模糊、桌面视口无回归、路由过渡中间帧与稳定态。
+- **遗留问题**：见 `docs/current-state.md` 第五节；新增 13（过渡观感与 reduced-motion 禁用待作者目视）与 14（触摸点按路径待真机补验）；第 10 条"派生进程残留"在阶段 3 又复现 4 次（node 占 5173）。
+- **下一步**：阶段 4 —— 前端模块二 / 三：文章列表（卡片、分页或无限滚动、骨架屏、悬停动效）与文章详情（Markdown 渲染、代码高亮、阅读进度条、TOC、图片懒加载）；**开工前需向作者申请** `frontend/public/` 目录与补齐全量种子文章（约 12 篇）。

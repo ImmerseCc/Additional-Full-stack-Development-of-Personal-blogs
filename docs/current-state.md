@@ -1,28 +1,28 @@
 # 当前状态
 
 > 本文件是项目进度的**唯一实时快照**，每个阶段/批次结束后同步更新；**每个新会话开始时，请先读本文件**。
-> 最后更新：**阶段 3「前端模块一：全局导航与主题」进行中**——批 0（开工基线）、批 1（主题系统）、批 2（导航栏 + 路由目标 + 404）、批 3（移动端汉堡菜单 + 滚动样式变化）已完成，批 4 待做；阶段 0–2 全部完成并实测通过。
+> 最后更新：**阶段 3「前端模块一：全局导航与主题」全部完成（批 0–4，含浏览器实测）**；阶段 0–2 亦全部完成并实测通过。**下一步进入阶段 4「前端模块二 / 三：文章列表与详情」**。
 
 ---
 
 ## 零、新会话接手说明（给下一个会话的 AI）
 
 1. **先读三个文件**：`AGENTS.md`（项目总纲与禁止事项）、`docs/current-state.md`（本文件）、`docs/api-contract.md`（接口契约 v1.0，**已确认**，实现时不得擅自改字段）。
-2. **进度**：阶段 0、0.5、1、2 已完成；阶段 3「前端模块一：全局导航与主题」**批 0 已完成、批 1–4 待做**。后端 13 个操作已全部实现并实测（见第七节清单）；前端仍是骨架页（`App.vue` + `HomeView.vue`，`router/index.js` 只有 `/` 与兜底重定向）。
-3. **日志三件套**：`docs/ai-log.md`（逐轮流水）、`docs/collaboration-log.md`（关键提示词汇总 + 阶段索引 + 阶段记录）、`docs/debug-log.md`（报错专档，已有 5 条真实记录）；审计记录在 `docs/audit-report.md`（阶段 9 才做）。
-4. **环境事实**：Node 24.21.0 / npm 11.19.0 已安装；JDK 26 **已验证**可跑 Spring Boot 4.1.1；Maven 未安装但 `mvnw` 可用（依赖已缓存，后端启动约 2 秒）；**后端当前处于停止状态**（阶段 2 收尾时已停并清理 JVM），需要时用第八节的标准命令启动。
+2. **进度**：阶段 0、0.5、1、2、3 已完成。**当前应从阶段 4「前端模块二 / 三：文章列表 + 文章详情」开始**；后端 13 个操作已全部实现并实测（见第七节清单）；前端已具备导航栏 / 汉堡菜单 / 三态主题 / 404 / 路由过渡 / 页脚，**文章列表与详情仍是占位页**（`HomeView.vue`、`ArticlesView.vue`、`AboutView.vue` 中的说明文字即待办）。
+3. **日志三件套**：`docs/ai-log.md`（逐轮流水）、`docs/collaboration-log.md`（关键提示词汇总 + 阶段索引 + 阶段记录）、`docs/debug-log.md`（报错专档，已有 5 条真实记录 + 8 条观察项）；审计记录在 `docs/audit-report.md`（阶段 9 才做）。
+4. **环境事实**：Node 24.21.0 / npm 11.19.0 已安装；JDK 26 **已验证**可跑 Spring Boot 4.1.1；Maven 未安装但 `mvnw` 可用（依赖已缓存，后端启动约 2 秒）；**后端与前端 dev server 当前均处于停止状态**，需要时用第八节的标准命令启动。
 5. **协作纪律**：分批交付、每批结束停下等确认；未运行的命令写"未运行，需我验证"；不编造运行结果；禁止使用现成博客模板或整站主题。
-6. **本机已踩过的坑（细节都在 `docs/debug-log.md`）**：① Git Bash 里给 `curl` 传中文参数会被按 **GBK** 编码 → 改用预编码 UTF-8 百分号串，或用 Swagger UI / PowerShell `Invoke-RestMethod`；② `wc -m` 在本机按**字节**计数（要数中文长度得按码点算）；③ AI 的后台任务有 **10 分钟上限**，超时只杀包装进程、派生 JVM 会继续存活并占住 8080（用 `taskkill //PID <pid> //F` 清理）；④ 浏览器提示"拒绝连接"时，排查第一步永远是"确认服务是否真的在监听"。
+6. **本机已踩过的坑（细节都在 `docs/debug-log.md`）**：① Git Bash 里给 `curl` 传中文参数会被按 **GBK** 编码 → 改用预编码 UTF-8 百分号串，或用 Swagger UI / PowerShell `Invoke-RestMethod`；② `wc -m` 在本机按**字节**计数（要数中文长度得按码点算）；③ AI 的后台任务有 **10 分钟上限**，超时只杀包装进程、**派生 JVM / node 会继续存活**并占住 8080 / 5173（用 `taskkill //PID <pid> //F` 清理，阶段 3 期间已复现 4 次）；④ 浏览器提示"拒绝连接"时，排查第一步永远是"确认服务是否真的在监听"；⑤ **内置浏览器在触摸仿真（mobile + touch）下合成的鼠标点击不送达页面**，移动端交互验证请优先用键盘路径，点按路径交作者真机验收。
 
 ---
 
 ## 一、当前阶段
 
-**阶段 3「前端模块一：全局导航与主题」：进行中**（批 0 ✅、批 1 ✅、批 2 ✅、批 3 ✅；批 4 待做）
-**上一阶段：阶段 2「后端业务实现」全部完成 ✅**（批 0 → 批 1 → 批 2a → 批 2b → 批 3 → 批 4；累计 52 项接口实测通过；作者已确认批 4）
+**阶段 3「前端模块一：全局导航与主题」：全部完成 ✅**（批 0 → 批 1 → 批 2 → 批 3 → 批 4，每批停下等作者确认；批 0–3 已提交入库）
+**下一阶段：阶段 4「前端模块二 / 三：文章列表与文章详情」——尚未开始。**
 
-阶段 3 分批（8 项决策见第二节「关键决策记录」K–Q，详细计划见第四节）：
-批 0 开工基线 ✅ → 批 1 主题系统（Pinia 三态 + CSS 变量 + 首屏防闪）✅ → 批 2 导航栏 + 路由目标 + 404 页 ✅ → 批 3 移动端汉堡菜单 + 滚动样式变化（可访问性）✅ → 批 4 路由过渡 + 收尾（文档同步）。每批结束停下等作者确认后才提交。
+阶段 3 分批：
+批 0 开工基线 ✅ → 批 1 主题系统（Pinia 三态 + CSS 变量 + 首屏防闪）✅ → 批 2 导航栏 + 路由目标 + 404 页 ✅ → 批 3 移动端汉堡菜单 + 滚动样式变化 ✅ → 批 4 路由过渡 + 页脚拆分 + 文档同步 ✅。
 
 ---
 
@@ -32,21 +32,14 @@
 |---|---|---|
 | 阶段 0 | 需求确认与技术选型（未写代码） | 选型：Vue 3 + Vite、原生 CSS 变量、Spring Boot 4.1.1 + JdbcTemplate + SQLite；0–9 阶段路线 |
 | 阶段 0.5 | 协作日志规范确认 | `ai-log.md`（流水）+ `collaboration-log.md`（汇总），四套模板与禁止事项 |
-| 阶段 1 批 1 | 根目录 3 个文件 | `README.md`、`.gitignore`、`AGENTS.md`；作者确认通过 |
-| 阶段 1 批 2 | docs 文档骨架 + `git init` + Node 安装 | 9 个文件；分支 `main`；`node v24.21.0` / `npm 11.19.0` 实测 |
-| 阶段 1 批 2 收尾 | 契约与数据模型确认 + `.gitattributes` + 首次提交 | 两份文档升级 v1.0 已确认；提交 `501065a` |
-| 阶段 1 批 3 | frontend 12 个文件 | `npm install`（81 包）、`npm run build`（28 模块 / 104ms）、dev server 冒烟全部实测通过 |
+| 阶段 1 批 1–4 | 目录骨架、docs、frontend、backend 全部落地 | 根目录 3 文件 + docs 9 文件 + frontend 12 文件 + backend 15 文件；`git init`；契约与模型升级 v1.0；提交 `501065a` → `25e280e` |
 | 报错修复 | 浏览器 `http://127.0.0.1:5173` 被拒绝 | 根因：Vite 只绑定 IPv6；修复：`vite.config.js` 加 `host: '127.0.0.1'`（报错记录 2） |
-| 阶段 1 批 4 | backend 15 个文件 | `schema.sql`（5 张表）+ `data.sql`（3 篇种子）；`Started BlogApplication in 1.815 seconds`；6 张表 + 7 个索引 |
-| 阶段 1 收尾 | 阶段记录与状态快照落盘 | `collaboration-log.md` 新增「五、阶段记录」；作者确认批 1–4 |
-| 阶段 2 批 0 | 提交收尾 + 修正过时的 git 描述 | 提交 `e9ab336`（发现"第二次提交"其实已存在） |
-| 阶段 2 批 1 | `common` + `model` + `config` 共 19 个文件 | `Compiling 20 source files`；启动 `2.098 seconds`；`GET /api/not-exist → 404 + 40004`；提交 `92a5cc6` |
-| 阶段 2 批 2a | 文章读路径 8 个文件 | 13 项 curl 实测（时间格式带秒位 `2026-09-07T09:00:00`、方法不支持 → 40002）；提交 `b22592d` |
-| 阶段 2 批 2b | 文章写路径（5 个文件修改） | 16 项实测；**外键级联删除真实生效**（遗留项 12 关闭）；重启后数据仍在；摘要 120 码点；提交 `5c210a3` |
-| 阶段 2 批 3 | 评论 + 点赞 7 个文件 | 19 项实测（点赞 / 取消**两端幂等**、visitorId 归属校验、40001 / 40004）；提交 `4b1700b` |
-| 阶段 2 批 4 | 收尾：Swagger 注解、异常兜底、`busy_timeout` | 5 个 tag 分组、13 条接口摘要、`/swagger-ui/index.html → 200`、异常兜底 4 项、`PRAGMA busy_timeout = 5000`；提交 `7174838` |
-
-阶段 2 的真实报错共 **5 条**（1 环境类、2 前端配置类、3 与 5 使用类、4 工具 / 编码类），全部写入 `docs/debug-log.md`；其中第 4 条暴露的"查询串解码失败被兜底成 50000"属代码改进项，已在 `GlobalExceptionHandler` 修正为 40002。
+| 阶段 2 批 0–4 | 后端业务实现（13 个操作） | 累计 52 项接口实测通过；外键级联、点赞幂等、`busy_timeout` 均实测；提交 `e9ab336` → `7174838` → `af2334c` |
+| 阶段 3 批 0 | 开工基线（文档更正） | `README.md` 状态块 + 本文件同步；`npm run build` 基线 28 模块 / 160ms；提交 `8c5923d` |
+| 阶段 3 批 1 | 主题系统（三态） | 新建 `stores/theme.js`、`components/ThemeToggle.vue`；扩展 `styles/base.css`；删 2 个 `.gitkeep`。浏览器实测三态循环 + 刷新不丢；提交 `7de72da` |
+| 阶段 3 批 2 | 导航栏 + 路由目标 + 404 | 新建 `components/AppHeader.vue`、`views/NotFoundView.vue`（完整）与 `views/{ArticlesView,AboutView}.vue`（占位）；路由加 `/articles`、`/about`、`/:pathMatch(.*)*` 与 `document.title` 同步；各视图独立 chunk；提交 `b257499` |
+| 阶段 3 批 3 | 移动端汉堡菜单 + 滚动样式变化 | `AppHeader.vue` 重写（`aria-expanded` / `aria-controls`、Esc、焦点进出、遮罩、`backdrop-filter` 页头）+ `--color-bg-header`。375×667 实测折叠 / 键盘开合 / Esc / 滚动模糊，桌面无回归；提交 `b1a517f` |
+| 阶段 3 批 4 | 路由过渡 + 页脚拆分 + 文档同步 | 新建 `components/AppFooter.vue`；`App.vue` 加 `<Transition name="page" mode="out-in">`；`base.css` 加 `.page-*`；`README.md` 与四份 docs 同步 |
 
 **关键决策记录（作者已确认）**
 
@@ -62,8 +55,8 @@
 | H | 阶段 2 分批方案：把"原批 2"拆成 **2a 读路径 / 2b 写路径** |
 | I | 阶段 2 实测产生的文章 5：**只删文章、保留标签**（选 b，已用接口删除） |
 | J | `--enable-native-access` 只写进 README 排查说明，不进标准启动命令 |
-| K | 阶段 3 菜单项锁定三项：首页 `/`、文章列表 `/articles`、关于 `/about`；后两者本阶段只做**占位页**（完整实现分别在阶段 4、阶段 6+） |
-| L | 阶段 3 **新增 404 页**（`NotFoundView.vue`），替换当前"非匹配路径一律重定向首页"的兜底 |
+| K | 阶段 3 菜单项锁定三项：首页 `/`、文章列表 `/articles`、关于 `/about`；后两者阶段 3 只做**占位页** |
+| L | 阶段 3 **新增 404 页**（`NotFoundView.vue`），替换"非匹配路径一律重定向首页"的兜底 |
 | M | 主题切换采用**三态**：亮 / 暗 / 跟随系统（`blog:theme` 存 `light` / `dark` / `system`） |
 | N | 主题按钮固定在导航栏右侧（桌面与移动端同一位置，不藏进汉堡菜单） |
 | O | 关于页阶段 3 **不调用后端**，保持纯前端（前后端对接演练留阶段 6） |
@@ -74,25 +67,24 @@
 
 ## 三、待确认 / 待执行
 
-1. **阶段 3 进行中**：批 4 待做（见第四节计划）；每批结束停下等作者确认，确认后才提交；
-2. **每个阶段结束后作者会新开会话**：新会话请按"第零节 新会话接手说明"操作；
-3. **README 待同步项（批 4 一并处理）**：`README.md` 的「后端功能」状态列、第四节前端模块表、「已知问题与风险」第 2/6 条仍是阶段 1 的过时描述；
-4. **需作者补验的点按路径**（批 3 遗留）：触摸点按开合菜单、遮罩点击关闭、点击链接后路由变化自动收起——内置浏览器在触摸仿真下合成点击不送达页面，只能由真机 / 真实浏览器验收；
-5. **可选未做项**（不阻塞阶段 3）：SQLite WAL 模式（连接池为 1，收益有限）、`frontend/public/` 静态资源目录（阶段 4 需要封面图时再申请新增）、全量种子文章约 12 篇（阶段 4/5 补齐）。
+1. **阶段 3 已完成，等待作者验收**：批 0–3 已提交，批 4（含文档同步）待作者确认后提交；
+2. **验收建议**：作者按第八节启动前端，在三档宽度（375 / 768 / 1440）核对导航、汉堡菜单、主题三态、当前页高亮、路由过渡与 404 页后给出结论（**AI 不代签**）；
+3. **需作者补验的点按路径**：触摸点按开合菜单、遮罩点击关闭、点链接后路由变化自动收起——内置浏览器在触摸仿真下合成点击不送达页面（见零节第 6 条 ⑤）；另建议在 DevTools → Rendering 里开启"减少动态效果"复核过渡动画是否被禁用；
+4. **阶段 4 需先申请的资源**：`frontend/public/` 静态资源目录（封面图 / favicon），以及全量种子文章约 12 篇——按既定约定「需要时向作者申请」，等作者同意再新增。
 
 ---
 
-## 四、阶段 3 分批计划（作者已确认 8 项决策）
+## 四、阶段 3 逐批结果（作者已确认批 0–批 3）
 
-| 批 | 内容 | 产物与验证 |
+| 批 | 内容 | 结果与证据 |
 |---|---|---|
-| 批 0 ✅ | 开工基线 | `README.md` 顶部状态块更正；本文件同步；`npm run build` 基线通过（28 模块 / 160ms）；`git status` 干净（`af2334c` → 提交 `8c5923d`） |
-| 批 1 ✅ | 主题系统（三态） | 新建（完整）`src/stores/theme.js`、`src/components/ThemeToggle.vue`；修改（完整）`src/styles/base.css`、`src/App.vue`；删除 2 个 `.gitkeep`；`index.html` 核对通过未改。实测：`npm run build` → 31 模块 / 131ms；浏览器实测三态循环 + 刷新不丢（截图留档） |
-| 批 2 ✅ | 导航栏 + 路由目标 + 404 | 新建（完整）`src/components/AppHeader.vue`、`src/views/NotFoundView.vue`；新建（占位）`src/views/ArticlesView.vue`、`src/views/AboutView.vue`；修改（完整）`src/router/index.js`（三条路由 + 404 + `document.title` 同步）、`src/App.vue`、`src/styles/base.css`（`.page`）。实测：`npm run build` → 39 模块 / 157ms 且各视图独立 chunk；浏览器实测四路径标题、当前页高亮、404 页、深色主题（截图留档） |
-| 批 3 ✅ | 移动端汉堡菜单 + 滚动样式变化 | 修改（完整）`src/components/AppHeader.vue`（`aria-expanded` / `aria-controls`、Esc、路由切换自动收起、焦点进出、遮罩、滚动样式）、`src/styles/base.css`（`--color-bg-header`）。实测：`npm run build` → 169ms / CSS 6.10 kB；浏览器 375×667 实测折叠、键盘开启、Esc 关闭、滚动后页头半透明模糊（截图留档），桌面视口无回归。**点按路径需作者真机补验** |
-| 批 4 | 路由过渡 + 收尾 | 改 `App.vue`（`<router-view v-slot>` + `<transition>`，尊重 `prefers-reduced-motion`）、`base.css`；可选 `AppFooter.vue`；同步 `README.md`（含第三节遗留项）、`docs/{current-state,ai-log,collaboration-log,debug-log}.md`；`npm run build` + 三档自测 |
+| 批 0 ✅ | 开工基线 | `README.md` 顶部状态块更正；本文件同步；`npm run build` 基线 28 模块 / 160ms；提交 `8c5923d` |
+| 批 1 ✅ | 主题系统（三态） | 新建（完整）`src/stores/theme.js`、`src/components/ThemeToggle.vue`；修改（完整）`src/styles/base.css`、`src/App.vue`；删除 2 个 `.gitkeep`。实测 31 模块 / 131ms；浏览器验证三态循环 + 刷新不丢 |
+| 批 2 ✅ | 导航栏 + 路由 + 404 | 新建（完整）`AppHeader.vue`、`NotFoundView.vue`；新建（占位）`ArticlesView.vue`、`AboutView.vue`；修改 `router/index.js`、`App.vue`、`base.css`。实测 39 模块且四视图独立 chunk；四路径标题 + 高亮 + 404 + 深色主题 |
+| 批 3 ✅ | 汉堡菜单 + 滚动样式 | 修改（完整）`AppHeader.vue`、`base.css`。实测 CSS 6.10 kB；375×667 折叠 / 键盘开合 / Esc / 遮罩 / 滚动后页头半透明模糊；桌面视口无回归（点按路径待补验） |
+| 批 4 ✅ | 路由过渡 + 收尾 | 新建（完整）`AppFooter.vue`；修改（完整）`App.vue`、`base.css`；`README.md` + `docs/*` 同步。实测 142ms / CSS 6.46 kB / 主包 106.33 kB（Transition 运行时首次进包）；截图捕获到过渡中间帧与稳定态 |
 
-**验收要点**：导航栏（含滚动样式变化）、汉堡菜单（含键盘可达）、主题三态 + 首屏防闪、当前页高亮、路由过渡。作者用浏览器验证 375px / 768px / 1440px 三档布局与主题切换后给出结论（AI 不代签）。
+**验收要点**：导航栏（含滚动样式变化）、汉堡菜单（含键盘可达）、主题三态 + 首屏防闪、当前页高亮、路由过渡、404 页。
 
 ---
 
@@ -105,13 +97,15 @@
 | 3 | 依赖下载慢（首次约 10 分钟量级） | 影响验证耗时 | 依赖已缓存，后续启动 2 秒级 |
 | 4 | ~~接口契约与数据模型是草案~~ **已解决** | — | v1.0 已确认，阶段 2 全部按契约实现 |
 | 5 | 项目目录路径含空格 | 目前低风险 | 出现工具异常时再评估迁移 |
-| 6 | `frontend/public/`（封面图等静态资源目录）未创建 | 阶段 4 文章封面暂无本地图片 | 需要时向作者申请新增；当前种子文章 `cover_url` 均为 NULL，前端可用渐变占位 |
+| 6 | `frontend/public/`（封面图等静态资源目录）未创建 | 阶段 4 文章封面暂无本地图片 | 需向作者申请新增；当前种子文章 `cover_url` 均为 NULL，前端可用渐变占位 |
 | 7 | 种子文章仅 3 篇 | 演示内容偏少 | 全量约 12 篇在阶段 4/5 补齐 |
 | 8 | 后端未做鉴权（演示项目） | 公网部署有风险 | 已在 `application.yml`、`AGENTS.md`、`README.md`、Swagger 描述中标注 |
-| 9 | ~~SQLite 的 `busy_timeout` 未设置~~ **部分解决** | — | `busy_timeout=5000` 已随 JDBC URL 生效（批 4 实测 `PRAGMA busy_timeout = 5000`）；**WAL 仍未启用**，需要时在 `connection-init-sql` 追加 `PRAGMA journal_mode = WAL` |
-| 10 | 结束后台任务会留下派生 JVM；后台任务还有 10 分钟上限 | 下次启动报端口占用 | 已实测（超时只杀包装进程、JVM 存活）；停后端用 `TaskStop` 或 `taskkill //PID <pid> //F`；已写入 `debug-log.md` 观察项 |
+| 9 | ~~SQLite 的 `busy_timeout` 未设置~~ **部分解决** | — | `busy_timeout=5000` 已生效；**WAL 仍未启用**，需要时在 `connection-init-sql` 追加 `PRAGMA journal_mode = WAL` |
+| 10 | 结束后台任务会留下派生进程（JVM / node） | 下次启动报端口占用 | 阶段 3 又复现 4 次（5173 被 node 占住）；停服统一用 `netstat -ano \| grep ":端口" \| grep -i listening` + `taskkill //PID <pid> //F` |
 | 11 | ~~JDK 26 提示 native-access 警告~~ **已处理** | — | 结论：仅警告，不写进标准启动命令；`README.md`《常见问题排查》已说明 |
 | 12 | ~~外键约束是否在应用连接上真正打开未验证~~ **已解决** | — | 批 2b 实测：删除文章后 `comment` / `like_record` / `article_tag` 计数全部归 0 |
+| 13 | 过渡动画的**观感**（时长 / 缓动）与 `prefers-reduced-motion` 禁用未由 AI 实测 | 可能不合口味 | 截图只能证明过渡存在；需作者目视评价，必要时调整 `--duration-base` / `--ease-out` |
+| 14 | 触摸点按路径未由 AI 实测（工具限制） | 无法自动化回归 | 交作者真机 / 真实浏览器点按验收；已记入 `debug-log.md` 观察项 |
 
 ---
 
@@ -126,10 +120,11 @@
 | 前端依赖 | vue 3.5.43、vue-router 5.3.1、pinia 4.0.3、markdown-it 15.0.2、highlight.js 11.12.0、dompurify 3.4.15、vite 8.3.0、@vitejs/plugin-vue 6.0.9 |
 | 后端依赖 | Spring Boot 4.1.1（Web 起步依赖为 **spring-boot-starter-webmvc**）、Spring 7.0.9、Tomcat 11.0.24、sqlite-jdbc 3.53.4.0、springdoc-openapi-starter-webmvc-ui 3.1.1、**Jackson 3**（`tools.jackson.core:jackson-databind:3.1.5`） |
 | 数据库 | `backend/data/blog.db`；6 张表 + 7 个索引；种子数据 `article=3`、`tag=4`（另有阶段 2 实测产生的「级联测试标签」，计数 0）、`article_tag=5`；JDBC URL 已带 `busy_timeout=5000` |
-| 后端状态 | **当前已停止**（阶段 2 收尾时停服并清理 JVM，`8080 已释放`） |
+| 服务状态 | **后端与前端 dev server 均已停止**（阶段 3 批 4 收尾时确认 `5173/8080 均已释放`） |
 | 网络 | `start.spring.io`、`registry.npmjs.org`、`repo.maven.apache.org`、`repo1.maven.org` 可达；`github.com` 不可达（报错记录 1） |
-| Git 仓库 | 分支 `main`；提交链：`501065a` → `25e280e` → `e9ab336` → `92a5cc6` → `b22592d` → `5c210a3` → `4b1700b` → `7174838`（阶段 2 批 4）→ `af2334c`（阶段 2 收尾文档）；工作区干净 |
-| 前端构建基线 | 阶段 3 批 0 实测：`npm run build` → `28 modules transformed` / `built in 160ms`（dist 产物：index 1.30 kB、index js 89.01 kB / gzip 34.74 kB） |
+| Git 仓库 | 分支 `main`；提交链：`501065a` → `25e280e` → `e9ab336` → `92a5cc6` → `b22592d` → `5c210a3` → `4b1700b` → `7174838` → `af2334c`（阶段 2 收尾）→ `8c5923d`（批 0）→ `7de72da`（批 1）→ `b257499`（批 2）→ `b1a517f`（批 3）→ 阶段 3 收尾（本次提交） |
+| 前端构建基线 | 阶段 3 批 4 实测：`npm run build` → `✓ built in 142ms`；`index css 6.46 kB`、主包 `index-*.js 106.33 kB / gzip 41.62 kB`；四个视图各自独立 chunk |
+| 前端页面结构 | 三条正式路由（`/`、`/articles`、`/about`）+ 404 兜底；页头 / 主内容 / 页脚三段式；主题键 `blog:theme` |
 
 ---
 
@@ -178,4 +173,4 @@ cd frontend && npm install && npm run dev
 
 访问地址：前端 http://localhost:5173 ｜ 后端 http://localhost:8080 ｜ Swagger UI http://localhost:8080/swagger-ui/index.html ｜ API 前缀 `/api`（前端经 Vite 代理）。
 
-> 贴士：① 路径含空格，`cd` 时**必须加引号**；② 后端只在**运行期间**才能访问 `/api/*` 与 Swagger UI（报错记录 5 的教训）；③ 停后端后如仍有进程占 8080：`netstat -ano | grep ":8080" | grep -i listening` 查到 PID 后 `taskkill //PID <pid> //F`；④ 数据库重置＝停服 → 删除 `backend/data/blog.db`、`blog.db-wal`、`blog.db-shm` → 重启（会丢数据，属不可恢复操作）。
+> 贴士：① 路径含空格，`cd` 时**必须加引号**；② 后端只在**运行期间**才能访问 `/api/*` 与 Swagger UI（报错记录 5 的教训）；③ 停服务后如仍有进程占端口：`netstat -ano | grep ":5173" | grep -i listening`（或 `:8080`）查到 PID 后 `taskkill //PID <pid> //F`；④ 数据库重置＝停服 → 删除 `backend/data/blog.db`、`blog.db-wal`、`blog.db-shm` → 重启（会丢数据，属不可恢复操作）；⑤ 主题等本地数据重置＝DevTools → Application → Local Storage → 删除 `blog:` 前缀的键（阶段 5 会提供页面内重置按钮）。
