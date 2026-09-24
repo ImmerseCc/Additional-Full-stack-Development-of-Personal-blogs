@@ -1,3 +1,0 @@
-# 占位文件（保留空包）
-# 公共层：统一响应体、错误码、业务异常、全局异常处理
-# 计划类（阶段 2）：ApiResponse、ErrorCode、BizException、GlobalExceptionHandler

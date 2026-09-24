@@ -28,7 +28,7 @@
 | 0 | 需求确认与技术选型 | 已完成（未写代码） | `ai-log.md` → 阶段 0 |
 | 0.5 | 协作日志规范确认 | 已完成（问答轮） | `ai-log.md` → 阶段 0.5 |
 | 1 | 目录结构与占位文件 | **已完成**：批 1 ✅ ／ 批 2 ✅ ／ 批 3 ✅ ／ 批 4 ✅（作者全部确认通过） | 本文件 → 五、阶段记录；`ai-log.md` → 阶段 1 |
-| 2 | 后端业务实现（6 项基础 API + 统一返回 + Swagger） | 进行中：批 0 ✅（提交收尾）／批 1–4 待开工 | `ai-log.md` → 阶段 2 |
+| 2 | 后端业务实现（6 项基础 API + 统一返回 + Swagger） | 进行中：批 0 ✅（提交收尾）／批 1 ✅（待作者确认）／批 2a–4 待开工 | `ai-log.md` → 阶段 2 |
 | 3 | 前端搭建（模块一：导航与主题） | 未开始 | — |
 | 4 | 前端模块二 / 三（列表、详情、Markdown、TOC） | 未开始 | — |
 | 5 | 前端模块四 / 五 / 六（搜索过滤、评论点赞、本地持久化） | 未开始 | — |
@@ -45,6 +45,7 @@
 |---|---|---|---|---|
 | 1 | scoop 自更新失败（`github.com` 连接被重置），Node 仍安装成功 | 环境类（非项目代码） | 已定位 · 非阻塞 · 无需修复 | `docs/debug-log.md` 报错记录 1 |
 | 2 | 浏览器访问 `http://127.0.0.1:5173` 被拒绝（Windows 下 Vite 只绑定 IPv6） | 前端配置类（真实故障） | **已修复并实测通过** | `docs/debug-log.md` 报错记录 2 |
+| 3 | 终端报 `cd: backend: No such file or directory` + `curl: (7)` 连不上 8080 | 使用 / 环境类（非代码缺陷） | **已修复并双方实测通过** | `docs/debug-log.md` 报错记录 3 |
 
 ---
 
@@ -103,5 +104,5 @@
   - `git commit` → `501065a chore: 初始化项目骨架（根目录文件 + docs 文档骨架）`
   - `git commit` → `25e280e feat: 完成 frontend/backend 骨架并修复 dev server IPv4 绑定`（批 3、批 4 与 IPv4 修复合并入库，31 个文件）
   - 作者侧：批 1、批 2、批 3、批 4 均已回复"通过"
-- **遗留问题**：见 `docs/current-state.md` 第五节。已解决：JDK 26 兼容性、Node 安装、后端启动与建表验证、第二次 git 提交（`25e280e`）。未处理：`docs/ai-log.md` 缺少批 3/批 4 逐轮记录、`frontend/public/` 目录、全量种子文章（约 12 篇）、外键级联删除的实测、结束后台任务会残留派生 JVM、`--enable-native-access` 警告。
+- **遗留问题**：见 `docs/current-state.md` 第五节。已解决：JDK 26 兼容性、Node 安装、后端启动与建表验证、第二次 git 提交（`25e280e`）、`docs/ai-log.md` 缺失的批 3/批 4 逐轮记录与报错记录 2/3（已按本文件记录补记）。未处理：`frontend/public/` 目录、全量种子文章（约 12 篇）、外键级联删除的实测、结束后台任务会残留派生 JVM、`--enable-native-access` 警告。
 - **下一步**：阶段 2 —— 后端五层业务实现（`common` / `model` / `repository` / `service` / `controller`），按 `docs/api-contract.md` v1.0 实现 health、文章 CRUD 与分页、标签、评论、点赞，并补 Swagger 注解与示例。

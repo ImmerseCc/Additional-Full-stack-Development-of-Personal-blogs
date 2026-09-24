@@ -75,6 +75,44 @@
 
 ---
 
+## 报错记录 3：`cd: backend: No such file or directory` + `curl: (7) Failed to connect to localhost:8080`（工作目录错误，非代码缺陷）
+
+- **报错原文**（作者在阶段 2 批 1 的验证环节报告，逐字照录）：
+
+  ```
+  第一项测试报错：bash: cd: backend: No such file or directory
+  第二项测试报错：bash: cd: backend: No such file or directory
+  curl: (7) Failed to connect to localhost:8080 after 2203 ms: Could not connect to server
+  ```
+
+  > 作者已确认：当时终端位于**默认目录**（未先进入项目根目录），作者原话"这是我的问题"。
+- **运行命令**：作者按 AI 交付的验证命令执行 `cd backend && ./mvnw -B -ntp compile`、启动后端的那条命令，以及 `curl -i http://localhost:8080/api/not-exist`
+- **相关代码或文件**：与项目代码无关；问题出在**执行命令时终端所在的工作目录**（相对路径 `cd backend` 的前提是终端已在项目根目录）
+- **定位过程**：
+  1. 两条报错都以 `bash: cd:` 开头，说明是 Git Bash 在解释 `cd backend`；该写法是**相对路径**，仅当当前目录就是项目根目录时才成立；
+  2. AI 在本机复现：先 `cd "$HOME"`（`/c/Users/19032`，即新开终端的默认位置），再执行 `cd backend` → 输出 `/usr/bin/bash: line 1: cd: backend: No such file or directory`，与作者报告的报错**完全一致**；
+  3. `curl: (7)` 是**连带结果**：前一条命令因 `cd` 失败而中断（`&&` 短路），后端从未启动，因此 8080 无服务可连；不是端口占用、也不是代理问题；
+  4. 排除项目侧原因：项目根目录确实存在且包含 `backend/`，同一编译命令在正确目录下已实测通过（阶段 2 批 1：`BUILD SUCCESS`）。
+- **修复方案**：不涉及任何代码修改，改为**绝对路径**进入子目录（或在项目根目录下执行相对路径命令）：
+
+  ```bash
+  # Git Bash：路径含空格，必须加引号
+  cd "/d/code/Additional Full-stack Development of Personal blogs/backend" && ./mvnw -B -ntp compile
+  ```
+
+  ```powershell
+  # Windows PowerShell / CMD
+  cd "D:\code\Additional Full-stack Development of Personal blogs\backend"; .\mvnw.cmd -B -ntp compile
+  ```
+
+  同时在 `README.md` 的《常见问题排查》表中新增一行，把"终端不在项目根目录"列为排查项，避免重复踩坑。
+- **修复后验证**：
+  1. AI 侧实测：在 `$HOME`（非项目目录）下执行绝对路径命令 → 输出 `/d/code/Additional Full-stack Development of Personal blogs/backend` 与 `BUILD SUCCESS`（`Total time: 1.074 s`）；
+  2. 作者侧复验（作者提供的真实输出）：终端 A 用绝对路径启动 → `Tomcat initialized with port 8080`、`HikariPool-1 - Start completed`、`Started BlogApplication in 1.663 seconds`（PID 29924，Java 26.0.2.1）；终端 B 的 `curl.exe -i http://localhost:8080/api/not-exist` **输出正常**，同一时刻终端 A 出现 `GlobalExceptionHandler : 接口不存在：api/not-exist`（DEBUG 日志），证明请求确实到达后端并被统一异常处理捕获。
+- **最终结果**：**已修复并双方实测通过**。根因一句话：终端不在项目根目录时，`cd backend` 必然失败，进而连带产生"后端未启动 + curl 连不上 8080"的现象；项目代码无缺陷。作者结论："当时终端在默认目录，这是我的问题"。
+
+---
+
 ## 待记录的观察项（尚未构成报错）
 
 | 观察 | 说明 | 状态 |
@@ -88,6 +126,6 @@
 
 ## 当前状态
 
-- 已记录真实报错：**2 条**（报错记录 1：环境类、非阻塞、无需修复；报错记录 2：已修复并实测通过）
-- 项目代码层面的报错：尚未发生（业务代码从阶段 2 开始写）
-- 交付要求"至少 1 次真实报错或调试过程"：**已满足**（第 2 条包含完整闭环：报错原文 → 定位 → 修复 → 实测验证）
+- 已记录真实报错：**3 条**（报错记录 1：环境类、非阻塞、无需修复；报错记录 2：已修复并实测通过；报错记录 3：使用 / 环境类，已修复并**双方**实测通过）
+- 项目代码层面的报错：尚未发生（阶段 2 批 1 的编译与启动烟测均通过）
+- 交付要求"至少 1 次真实报错或调试过程"：**已满足**（第 2、3 条均包含完整闭环：报错原文 → 定位 → 修复 → 实测验证）
