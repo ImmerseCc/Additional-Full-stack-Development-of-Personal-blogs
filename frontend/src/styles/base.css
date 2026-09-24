@@ -8,6 +8,7 @@
   --color-bg: #ffffff;
   --color-bg-soft: #f6f8fa;
   --color-bg-elevated: #ffffff;
+  --color-bg-header: rgba(255, 255, 255, 0.88);
   --color-text: #1f2328;
   --color-muted: #59636e;
   --color-accent: #3b6ef5;
@@ -43,6 +44,7 @@
   --color-bg: #14171c;
   --color-bg-soft: #1b2026;
   --color-bg-elevated: #1e242b;
+  --color-bg-header: rgba(30, 36, 43, 0.9);
   --color-text: #e6edf3;
   --color-muted: #9aa7b2;
   --color-accent: #6f9bff;
