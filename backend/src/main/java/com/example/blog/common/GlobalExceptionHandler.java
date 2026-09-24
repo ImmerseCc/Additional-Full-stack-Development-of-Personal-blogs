@@ -2,6 +2,7 @@ package com.example.blog.common;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.apache.tomcat.util.http.InvalidParameterException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -23,9 +24,9 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * <ul>
  *   <li>{@link BizException} —— service 层主动抛出的业务失败</li>
  *   <li>Bean Validation 失败 —— 40001，data.fields 给出字段级原因</li>
- *   <li>JSON / 参数格式错误 —— 40002</li>
+ *   <li>JSON / 参数 / 查询串编码格式错误 —— 40002</li>
  *   <li>接口路径不存在 —— 40004（避免被兜底处理成 50000）</li>
- *   <li>请求方法不支持（405）—— 40002</li>
+ *   <li>请求方法不支持 —— 40002（HTTP 400）</li>
  *   <li>数据库异常 —— 50001</li>
  *   <li>其他未预期异常 —— 50000</li>
  * </ul>
@@ -88,6 +89,19 @@ public class GlobalExceptionHandler {
         log.debug("请求方法不支持：{}", ex.getMethod());
         return ResponseEntity.status(ErrorCode.PARAM_FORMAT_ERROR.getHttpStatus())
                 .body(ApiResponse.fail(ErrorCode.PARAM_FORMAT_ERROR, "请求方法不支持：" + ex.getMethod()));
+    }
+
+    /**
+     * 查询串编码非法：Tomcat 按 UTF-8 解码百分号编码失败时抛出。
+     *
+     * <p>典型场景：客户端把中文参数按 GBK 等其它编码做了百分号编码（部分 Windows 终端里的 curl 会这样）。
+     * 这属于客户端参数问题，返回 40002，而不是被兜底成 50000。本项目使用内嵌 Tomcat，故直接引用其异常类型。
+     */
+    @ExceptionHandler(InvalidParameterException.class)
+    public ResponseEntity<ApiResponse<Object>> handleInvalidParameter(InvalidParameterException ex) {
+        log.debug("查询参数解码失败：{}", ex.getMessage());
+        return ResponseEntity.status(ErrorCode.PARAM_FORMAT_ERROR.getHttpStatus())
+                .body(ApiResponse.fail(ErrorCode.PARAM_FORMAT_ERROR, "查询参数编码非法，请使用 UTF-8 百分号编码"));
     }
 
     @ExceptionHandler(DataAccessException.class)

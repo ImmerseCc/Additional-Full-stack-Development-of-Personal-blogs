@@ -113,6 +113,38 @@
 
 ---
 
+## 报错记录 4：`curl` 传中文参数导致查询串解码失败 → 50000（工具 / 编码类，非项目缺陷）
+
+- **报错原文**（AI 在阶段 2 批 2a 实测时捕获，服务端日志原文节选）：
+
+  ```
+  ERROR c.e.blog.common.GlobalExceptionHandler : 服务端未预期异常
+
+  org.apache.tomcat.util.http.InvalidParameterException: Character decoding failed.
+  Parameter [tags] with value [��Ŀ��־,Vue] has been ignored. Note that the name and value
+  quoted here may be corrupted due to the failed decoding.
+      at org.apache.tomcat.util.http.Parameters.processParameters(Parameters.java:433)
+      ...（51 行调用栈略）
+  Caused by: java.nio.charset.MalformedInputException: Input length = 1
+      at java.base/java.nio.charset.CoderResult.throwException(CoderResult.java:279)
+  ```
+
+  接口响应：`{"code":50000,"message":"服务端未预期异常","data":null}`（HTTP 500）
+- **运行命令**：`curl -s --get --data-urlencode "tags=项目日志,Vue" --data-urlencode "tagMode=or" http://localhost:8080/api/articles`
+- **相关代码或文件**：`backend/src/main/java/com/example/blog/common/GlobalExceptionHandler.java`（当时缺少针对"查询串解码失败"的处理器，异常落到兜底的 50000）；与 `ArticleRepository` / `ArticleService` 的过滤逻辑**无关**（见定位过程第 1 步）
+- **定位过程**：
+  1. 先排除服务端过滤逻辑：把同样的两个标签改用**预编码 UTF-8 百分号串**（纯 ASCII）请求 → `?tags=%E9%A1%B9%E7%9B%AE%E6%97%A5%E5%BF%97,Vue&tagMode=or` → 返回 `"total":3`，说明 SQL 与标签 and/or 逻辑正确；
+  2. 用 `curl -v` 打印实际发出的请求行 → `GET /api/articles?tags=%CF%EE%C4%BF%C8%D5%D6%BE%2CVue&tagMode=or`，其中 `%CF%EE%C4%BF%C8%D5%D6%BE` 正是 **GBK 编码**的"项目日志"（项=CF EE、目=C4 BF、日=C8 D5、志=D6 BE），而 Tomcat 按 UTF-8 解码 → `MalformedInputException`；
+  3. 用 `printf '%s' "项目日志" | xxd` 检查同一条命令里的字节 → `e9a1 b9e7 9bae e697 a5e5 bf97`（**合法 UTF-8**）。两者的差异来自可执行文件类型：`/usr/bin/printf` 是 msys2 运行时程序（参数按 UTF-8 传递），而 `which curl` → `/mingw64/bin/curl`（`PE32+ executable for MS Windows`），**命令行参数按系统 ANSI 代码页转换**（简体中文 Windows 为 CP936/GBK）；
+  4. 因此结论是：这是**测试命令侧的编码问题**；浏览器与前端（fetch/axios）发出的中文参数一律是 UTF-8 百分号编码，不受影响。
+- **修复方案**（两部分）：
+  1. **服务端（代码改动）**：在 `GlobalExceptionHandler` 新增 `InvalidParameterException` 处理器，把"查询串编码非法"从兜底 `50000` 改为契约中的 `40002`（参数格式错误），消息为"查询参数编码非法，请使用 UTF-8 百分号编码"；同时把该类 javadoc 里"请求方法不支持（405）"的表述与实际行为（HTTP 400 + 40002）对齐；
+  2. **测试方法（不改代码）**：本机 Git Bash 用 `curl` 测中文参数时，改用预编码 UTF-8 百分号串（如 `tags=%E9%A1%B9%E7%9B%AE%E6%97%A5%E5%BF%97,Vue`），或改用 PowerShell / 浏览器验证。
+- **修复后验证**（AI 实测，真实输出）：重新编译并重启后，重跑同一条 GBK 命令 → `HTTP/1.1 400` + `{"code":40002,"message":"查询参数编码非法，请使用 UTF-8 百分号编码","data":null}`；预编码串复测 `tagMode=or → "total":3`、`tagMode=and → "total":1`，均符合预期。
+- **最终结果**：**已处理**（错误码更准确 + 测试方法已沉淀）。根因一句话：mingw64 版 curl 会把命令行里的中文按系统 ANSI 代码页（GBK）做百分号编码，服务端按 UTF-8 解码必然失败。**作者侧复验未反馈，标记为"待我验证"。**
+
+---
+
 ## 待记录的观察项（尚未构成报错）
 
 | 观察 | 说明 | 状态 |
@@ -126,6 +158,6 @@
 
 ## 当前状态
 
-- 已记录真实报错：**3 条**（报错记录 1：环境类、非阻塞、无需修复；报错记录 2：已修复并实测通过；报错记录 3：使用 / 环境类，已修复并**双方**实测通过）
-- 项目代码层面的报错：尚未发生（阶段 2 批 1 的编译与启动烟测均通过）
-- 交付要求"至少 1 次真实报错或调试过程"：**已满足**（第 2、3 条均包含完整闭环：报错原文 → 定位 → 修复 → 实测验证）
+- 已记录真实报错：**4 条**（1：环境类、非阻塞、无需修复；2：已修复并实测通过；3：使用 / 环境类，已修复并**双方**实测通过；4：工具 / 编码类，已处理，作者侧复验待反馈）
+- 项目代码层面的报错：**1 条已处理**（报错记录 4 暴露的"查询串解码失败被兜底成 50000"属项目代码改进项，已在 `GlobalExceptionHandler` 修正为 40002）
+- 交付要求"至少 1 次真实报错或调试过程"：**已满足**（第 2、3、4 条均包含完整闭环：报错原文 → 定位 → 修复 → 实测验证）

@@ -97,6 +97,30 @@
 - 遗留问题：`JacksonConfig` 的固定时间格式**尚未经 HTTP 验证**（本批没有返回时间的接口），计划批 2a 用 `curl /api/articles` 观察 `createdAt` 是否形如 `2026-09-03T09:00:00`（不省略秒位）；`HttpRequestMethodNotSupportedException`（405 → 40002）同样待批 2a 验证；本批改动尚未 git 提交。
 - 下一步：阶段 2 批 2a —— 文章读路径：`ArticleRepository` / `TagRepository`（读方法）+ `ArticleService` / `TagService` + `HealthController` / `ArticleController`（GET 列表、GET 详情）/ `TagController`，用 `curl` 实测分页、关键词、标签过滤、详情与 40004。
 
+### 阶段 2：后端业务实现（批 2a：文章读路径）
+- 我的提示词摘要："批 1 通过，提交并继续"——先提交批 1，再按已确认的分批方案执行批 2a（health / 文章列表与详情 / 标签列表）。
+- AI 做了什么：1) 提交批 1 改动（`92a5cc6`）；2) 写入 8 个文件（比原计划多 1 个，见下）；3) 删除已被真实代码取代的 3 个 `.gitkeep`；4) 编译 → 启动 → 13 项 curl 实测（分页、关键词、标签 and/or、状态、详情、404、参数非法、方法不支持、编码非法）；5) 实测中发现并定位一起真实报错（`curl` 中文参数按 GBK 编码导致查询串解码失败），在 `GlobalExceptionHandler` 补处理器后复测通过（详见报错记录 4）。
+- 改动文件：
+  - 新建（完整）：`backend/src/main/java/com/example/blog/common/TimeFormats.java`、`repository/ArticleRepository.java`、`repository/TagRepository.java`、`service/ArticleService.java`、`service/TagService.java`、`controller/HealthController.java`、`controller/ArticleController.java`、`controller/TagController.java`
+  - **计划外新增说明**：`common/TimeFormats.java` 不在原 7 文件清单中。原因：时间格式 `yyyy-MM-dd'T'HH:mm:ss` 需要被 repository（解析 SQLite 文本）、service（写入）与 `config/JacksonConfig`（JSON 序列化）三处共用，散落三份会漂移，故收敛为唯一定义，并把 `JacksonConfig` 改为引用它（删掉其内部重复的 formatter）。
+  - 修改：`config/JacksonConfig.java`（引用 `TimeFormats.DATE_TIME`）、`common/GlobalExceptionHandler.java`（新增查询串编码非法处理器；javadoc 与实际行为对齐）
+  - 删除（占位已被真实代码取代）：`repository/.gitkeep`、`service/.gitkeep`、`controller/.gitkeep`
+- 验证命令与结果（均为实测输出）：
+  - `./mvnw -B -ntp compile` → `Compiling 28 source files with javac [debug parameters release 21]`、`BUILD SUCCESS`
+  - `curl /api/health` → `{"code":0,"message":"ok","data":{"status":"UP","time":"2026-09-24T12:55:28"}}`
+  - `curl "/api/articles?page=1&size=2"` → `total=3`、`totalPages=2`，且 **`"createdAt":"2026-09-07T09:00:00"` 带秒位 —— 批 1 遗留的"时间格式未经 HTTP 验证"由此验证通过**
+  - `keyword=Vue → total=1`；`tags=Vue → total=1`；`tags=项目日志,Vue&tagMode=or → total=3`；`tags=项目日志,SQLite&tagMode=and → total=1`；`status=DRAFT → total=0`；`status=ALL → total=3`
+  - `curl /api/tags` → 4 个标签，文章数 2 / 1 / 1 / 1（按文章数倒序）
+  - `curl /api/articles/1` → 详情含 Markdown 正文，`prev` / `next` 为 `null`（阶段 8 实现）
+  - `curl /api/articles/9999` → `HTTP 404` + `{"code":40004,"message":"文章不存在：id=9999","data":null}`
+  - `curl "/api/articles?page=abc"` → `HTTP 400` + `40002`（参数格式错误：page）
+  - `curl "/api/articles?size=100"` → `HTTP 400` + `40002`（size 需在 1-20 之间）
+  - `curl -X POST /api/articles` → `HTTP 400` + `40002`（请求方法不支持：POST）——**批 1 遗留的"方法不支持分支未触发"由此验证通过**
+  - GBK 编码查询串（报错记录 4 场景）→ 修复前 `50000`，修复后 `HTTP 400` + `40002`
+  - 收尾：停止服务后按惯例清理派生 JVM（`taskkill //PID 36880 //F`），复查 `8080 已释放`
+- 遗留问题：文章**写路径**（创建 / 更新 / 删除、标签自动创建与清空、外键级联删除实测）留待批 2b；本批改动**尚未 git 提交**。
+- 下一步：阶段 2 批 2b —— 文章写路径（POST / PUT / DELETE + 标签维护 + 级联删除实测）。
+
 ---
 
 ## 报错记录
@@ -140,6 +164,17 @@
 - 修复方案：改用绝对路径（Git Bash `cd "/d/code/Additional Full-stack Development of Personal blogs/backend"`；PowerShell `cd "D:\code\Additional Full-stack Development of Personal blogs\backend"; .\mvnw.cmd ...`），并在 `README.md`《常见问题排查》表新增该现象一行。**无代码改动**。
 - 修复后验证：AI 侧在非项目目录用绝对路径 → `BUILD SUCCESS`（1.074 秒）；作者侧复验 → 终端 A `Started BlogApplication in 1.663 seconds`（PID 29924）、终端 B curl 输出正常，终端 A 同步出现 `GlobalExceptionHandler : 接口不存在：api/not-exist`。
 - 最终结果：**已修复并双方实测通过**。
+
+### 报错记录 4：`curl` 传中文参数导致查询串解码失败 → 50000（工具 / 编码类，非项目缺陷）
+> 专档见 `docs/debug-log.md` 报错记录 4；本条为同步条目。
+
+- 报错原文：服务端日志 `org.apache.tomcat.util.http.InvalidParameterException: Character decoding failed. Parameter [tags] ... has been ignored`，`Caused by: java.nio.charset.MalformedInputException: Input length = 1`；接口响应 `{"code":50000,"message":"服务端未预期异常","data":null}`。
+- 运行命令：`curl -s --get --data-urlencode "tags=项目日志,Vue" --data-urlencode "tagMode=or" http://localhost:8080/api/articles`
+- 相关代码或文件：`common/GlobalExceptionHandler.java`（缺少"查询串解码失败"处理器，异常落到兜底 50000）；与 `ArticleRepository` / `ArticleService` 的过滤逻辑无关。
+- 定位过程：把同样的标签改用预编码 UTF-8 百分号串请求 → `total=3`（说明过滤逻辑正确）；`curl -v` 显示实际发出的是 `%CF%EE%C4%BF%C8%D5%D6%BE`（**GBK** 编码的"项目日志"）；而同一行命令中 `printf '%s' "项目日志" | xxd` 得到的是合法 UTF-8（`e9a1 b9e7 9bae e697 a5e5 bf97`）→ 差异来自可执行文件类型：`/mingw64/bin/curl` 是 Windows CRT 程序（参数按系统 ANSI 代码页 CP936 转换），`/usr/bin/printf` 是 msys2 程序（UTF-8）。
+- 修复方案：① 服务端新增 `InvalidParameterException` → `40002` 处理器，并把 javadoc 中"请求方法不支持（405）"与实际行为对齐；② 测试方法改为使用预编码 UTF-8 百分号串，或改用 PowerShell / 浏览器验证。
+- 修复后验证：重跑同一条 GBK 命令 → `HTTP 400` + `{"code":40002,"message":"查询参数编码非法，请使用 UTF-8 百分号编码","data":null}`；预编码串复测 `or → total=3`、`and → total=1` 正常。
+- 最终结果：**已处理**（服务端错误码更准确 + 测试方法已记录；作者侧复验未反馈，标记为"待我验证"）。
 
 ---
 

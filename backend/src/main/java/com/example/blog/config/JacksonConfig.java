@@ -1,7 +1,7 @@
 package com.example.blog.config;
 
+import com.example.blog.common.TimeFormats;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,14 +18,11 @@ import tools.jackson.databind.module.SimpleModule;
 @Configuration
 public class JacksonConfig {
 
-    private static final DateTimeFormatter DATE_TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
-
     @Bean
     public JsonMapperBuilderCustomizer blogDateTimeFormatCustomizer() {
         return builder -> {
             SimpleModule module = new SimpleModule("blog-date-time");
-            module.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(DATE_TIME_FORMATTER));
+            module.addSerializer(LocalDateTime.class, new LocalDateTimeSerializer(TimeFormats.DATE_TIME));
             builder.addModule(module);
         };
     }
