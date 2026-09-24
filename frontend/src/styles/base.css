@@ -121,6 +121,13 @@ samp {
   background-color: var(--color-accent-soft);
 }
 
+/* 路由页面统一外框：宽度上限 + 水平居中 + 上下留白（各视图内部只写自己的内容样式） */
+.page {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+}
+
 /* 视觉隐藏但保留给屏幕阅读器（主题切换的状态播报等无障碍用途） */
 .visually-hidden {
   position: absolute;

@@ -295,3 +295,18 @@
   - 收尾：`TaskStop` 后 `netstat` 显示 PID 18788 仍监听 `127.0.0.1:5173`（已知项 10 再次复现：只杀包装进程、派生 node 存活）→ `taskkill //PID 18788 //F` → 复查 `5173/8080 均已释放`
 - 遗留问题：本批改动**尚未 git 提交**（等作者确认后提交）；**"跟随系统"在页面打开期间响应系统主题切换**（`matchMedia` 的 `change` 分支）**未由 AI 实测**——内置浏览器无法切换系统偏好，需作者用 DevTools → Rendering → Emulate CSS `prefers-color-scheme` 或直接改系统主题验证；"深色用户首屏不闪白"需目视复核（防闪脚本逻辑未改，风险低）。
 - 下一步：阶段 3 批 2 —— 导航栏（`AppHeader.vue`）+ 路由目标（`/articles`、`/about`、404 页）+ 当前页高亮 + `document.title` 同步；把主题按钮从 `App.vue` 移入导航栏右侧（决策 N）。
+
+### 阶段 3：前端模块一（批 2：导航栏 + 路由目标 + 404 页）
+- 我的提示词摘要："批 1 通过，提交并继续"——先提交批 1，再执行批 2（导航栏结构、三条路由 + 404、当前页高亮）。
+- AI 做了什么：1) 提交批 1（`7de72da`）；2) 新建 `AppHeader.vue`：站点标题（窄屏隐藏 `· VibeCoding` 后缀）+ 三项菜单（首页 / 文章列表 / 关于）+ 右侧主题按钮（从 `App.vue` 迁入，落实决策 N）；当前页高亮用自定义 `isActive()`（首页精确匹配、其余前缀匹配，将来 `/articles/1` 仍高亮"文章列表"）并输出 `aria-current="page"`；3) 新建三个视图：`ArticlesView.vue`（占位）、`AboutView.vue`（占位，静态说明、不调后端 = 决策 O）、`NotFoundView.vue`（完整 404：回显 `route.fullPath` + 返回首页入口）；4) `router/index.js` 增加 `/articles`、`/about` 与 `/:pathMatch(.*)*` → 404（替换原先"未知路径重定向首页"，落实决策 L），并加 `router.afterEach` 同步 `document.title`；5) `App.vue` 改为「页头 + 主内容 + 页脚」flex 三段式（`min-height: 100vh` 让页脚贴底）；6) `base.css` 补 `.page` 通用页面外框（三个视图共用，避免重复容器样式）；7) 编译 + 启动 dev server + 用内置浏览器逐页实测（含 404 与深色主题）。
+- 改动文件：
+  - 新建（完整）：`frontend/src/components/AppHeader.vue`、`frontend/src/views/NotFoundView.vue`
+  - 新建（占位）：`frontend/src/views/ArticlesView.vue`（阶段 4 实现列表）、`frontend/src/views/AboutView.vue`（阶段 6+ 补充内容）
+  - 修改（完整）：`frontend/src/router/index.js`、`frontend/src/App.vue`、`frontend/src/styles/base.css`（新增 `.page` 类）
+- 验证命令与结果（均为实测输出）：
+  - `npm run build` → `✓ 39 modules transformed.`（批 1 为 31）、**四个视图各自产出独立 chunk**：`ArticlesView-BplS5xem.js 0.39 kB`、`HomeView-lpxmHr9P.js 0.66 kB`、`NotFoundView-DtMIMIs5.js 0.67 kB`、`AboutView-C_rAfqLm.js 1.13 kB`，主包 `index-BmpdqNPE.js 98.05 kB` → **路由级代码分割生效**
+  - dev server 冒烟：`/ → 200`、`/articles → 200`、`/about → 200`、`/nope → 200`
+  - **浏览器实测**：`/` → 标题 `首页 · 个人博客`，页头含品牌链接 + 3 个导航链接 + 主题按钮；点「文章列表」→ 标题 `文章列表 · 个人博客` 且该项高亮；直达 `/about` → 标题 `关于 · 个人博客` 且「关于」高亮；直达 `/nope` → **404 页**（标题 `页面不存在 · 个人博客`、正文回显 `/nope`、有「返回首页」链接、三个导航项均不高亮）；再切深色复核页头 / 页脚 / 404 对比度正常（截图留档）；验证结束后把主题点回「跟随系统」，不把改动过的本地状态留给作者
+  - 收尾：`TaskStop` 后残留 node PID 29044 仍监听 5173（已知项 10 第三次复现）→ `taskkill` → 复查 `5173/8080 均已释放`
+- 遗留问题：本批改动**尚未 git 提交**（等作者确认）；**导航栏"滚动时样式变化"与移动端汉堡菜单尚未实现**——按分批计划一并归入批 3（滚动样式变化属交互，不在本批）；窄屏（< 768px）当前只是隐藏品牌后缀 + 缩小内边距，靠 3 个短菜单项自然排布，**尚未折叠**。
+- 下一步：阶段 3 批 3 —— 移动端汉堡菜单 + 滚动样式变化：`AppHeader.vue` 加 `aria-expanded` / `aria-controls`、Esc 关闭、路由切换自动收起、焦点进出、遮罩点击关闭；`base.css` 补断点与过渡；浏览器用 375px 视口实测。
