@@ -120,6 +120,12 @@ public class ArticleRepository {
         return tagsByArticle;
     }
 
+    /** 文章是否存在（评论 / 点赞接口的存在性校验用）。 */
+    public boolean existsById(long id) {
+        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM article WHERE id = ?", Integer.class, id);
+        return count != null && count > 0;
+    }
+
     /**
      * 插入文章，返回数据库生成的主键。
      *

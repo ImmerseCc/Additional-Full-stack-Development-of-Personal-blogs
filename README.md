@@ -80,6 +80,7 @@ npm run dev
 | 终端报 `cd: backend: No such file or directory`（或找不到 `./mvnw`） | 当前终端**不在项目根目录**，`cd backend` 是相对路径 | 先用绝对路径进入项目再加引号（路径含空格）：Git Bash `cd "/d/code/Additional Full-stack Development of Personal blogs"`；PowerShell `cd "D:\code\Additional Full-stack Development of Personal blogs"`。完整记录见 `docs/debug-log.md` 报错记录 3 |
 | 浏览器打不开 `http://127.0.0.1:5173`，但 `http://localhost:5173` 正常 | Windows 下 Vite 未显式设置 `host` 时可能只绑定 IPv6 `::1` | 本项目已在 `vite.config.js` 设置 `server.host = '127.0.0.1'` 规避；若仍出现，确认用的是最新配置并重启 dev server |
 | `npm run dev` 报找不到命令 | 终端是在安装 Node 之前打开的，PATH 未刷新 | 关闭并重新打开终端（本项目已安装 Node 24.21.0） |
+| 浏览器打不开 `http://localhost:8080/swagger-ui/index.html`（提示拒绝连接） | **后端没在运行**——Swagger UI 与 `/api/*` 只在后端运行期间可访问 | 先启动后端，等控制台出现 `Started BlogApplication` 再刷新页面；完整记录见 `docs/debug-log.md` 报错记录 5 |
 | 前端请求 `/api/...` 报 502 / ECONNREFUSED | 后端没启动，或不是 8080 | 先启动后端，确认控制台出现 Tomcat 监听 8080 |
 | 5173 被占用 | 其他程序占用端口 | 前端会自动换端口（看终端输出的 `Local:` 地址） |
 | 8080 被占用 | 其他程序占用端口 | 修改 `backend/src/main/resources/application.yml` 的 `server.port`，同时改 `frontend/vite.config.js` 的代理 target |

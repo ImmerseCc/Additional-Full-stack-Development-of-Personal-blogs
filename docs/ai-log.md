@@ -147,6 +147,27 @@
 - 遗留问题：数据库里留有本次实测产生的数据（文章 `id=5`「写路径实测：创建一篇文章」与标签 `id=5`「级联测试标签」，后者计数为 0）——保留还是重置由作者决定；本批改动**尚未 git 提交**。
 - 下一步：阶段 2 批 3 —— 评论与点赞（列表 / 发表 / 删除、点赞幂等、visitorId 归属校验）。
 
+### 阶段 2：后端业务实现（批 3：评论与点赞）
+- 我的提示词摘要："批 2b 通过，提交并继续，前一项选 b"——先提交批 2b，再执行批 3（评论与点赞），并按作者选择用**接口**删除上个批次的实测文章 5。
+- AI 做了什么：1) 提交批 2b（`5c210a3`）；2) 新增 7 个文件（含 1 个计划外文件 `common/PageParams.java`，理由见下），并修改 2 个既有文件；3) 编译 → 启动 → 19 项实测（评论 6 项 + 点赞 8 项 + 回归 5 项）；4) 执行 `DELETE /api/articles/5` 完成作者选定的清理；5) 停服、清理派生 JVM 与临时载荷文件。
+- 改动文件：
+  - 新建（完整）：`backend/src/main/java/com/example/blog/repository/CommentRepository.java`、`repository/LikeRepository.java`、`service/CommentService.java`、`service/LikeService.java`、`controller/CommentController.java`、`controller/LikeController.java`、`common/PageParams.java`
+  - **计划外文件说明**：`common/PageParams.java` 把"分页参数解析 + 语义校验（page ≥ 1、size 1–20）"收敛为唯一实现，供文章列表与评论列表共用；否则评论列表会复制文章列表那 12 行校验与错误文案（审计项「重复代码」）。相应地 `ArticleService` 的分页校验改为复用它。
+  - 修改：`backend/src/main/java/com/example/blog/repository/ArticleRepository.java`（新增 `existsById`）、`service/ArticleService.java`（分页校验改用 `PageParams`、新增 `requireArticleExists` 供评论 / 点赞共用）
+- 验证命令与结果（均为实测输出）：
+  - `./mvnw -B -ntp compile` → `Compiling 35 source files`、`BUILD SUCCESS`
+  - 清理（作者选 b）：`DELETE /api/articles/5` → `200 + {"code":0,"data":null}`；再查 → `404 + 40004`；标签「级联测试标签」按契约保留（计数 0）
+  - 评论发表：`POST /api/articles/1/comments` → **HTTP 201** + `{"id":2,"articleId":1,"authorName":"批3实测访客","content":"...","createdAt":"2026-09-24T19:30:05"}`（响应**不含 `authorEmail` 与 `visitorId`**）
+  - 评论列表：`GET /api/articles/1/comments?page=1&size=5` → `total=1, totalPages=1`
+  - 评论错误分支：`GET /api/articles/9999/comments` → `404 + 40004`；昵称为空 → `400 + 40001` + `data.fields:{"authorName":"昵称不能为空"}`
+  - 评论归属校验：`DELETE /api/comments/2` 用**他人** visitorId → `404 + 40004`（不删）；用**本人** visitorId → `200`；删除后列表 `total=0`
+  - 点赞：初始 `liked:false, likeCount:0` → 点赞 `true,1` → **重复点赞仍 `true,1`（幂等，计数未放大）** → 第二个访客点赞 `true,2` → 取消 `false,1` → **再次取消仍 `false,1`（幂等）** → 清理后 `false,0`
+  - 点赞错误分支：缺 `visitorId` → `400 + 40001` + `fields.visitorId`；`GET /api/articles/9999/likes?...` → `404 + 40004`
+  - 回归（`PageParams` 重构后）：文章列表 `total=3` 正常；`page=abc` → `400 + 40002`；`size=100` → `400 + 40002`；文章 1 收尾计数 `likeCount:0, commentCount:0`（未留测试数据）
+  - 收尾：`taskkill //PID 30228 //F` 清理派生 JVM、`8080 已释放`；删除 `target/c-*.json` 临时载荷
+- 遗留问题：本批 7 个新增 + 2 个修改的文件**尚未 git 提交**；阶段 2 仅剩批 4。
+- 下一步：阶段 2 批 4 —— 收尾（springdoc 注解、异常兜底实测、`busy_timeout` 评估、三份日志与状态快照同步）。
+
 ---
 
 ## 报错记录
@@ -201,6 +222,17 @@
 - 修复方案：① 服务端新增 `InvalidParameterException` → `40002` 处理器，并把 javadoc 中"请求方法不支持（405）"与实际行为对齐；② 测试方法改为使用预编码 UTF-8 百分号串，或改用 PowerShell / 浏览器验证。
 - 修复后验证：重跑同一条 GBK 命令 → `HTTP 400` + `{"code":40002,"message":"查询参数编码非法，请使用 UTF-8 百分号编码","data":null}`；预编码串复测 `or → total=3`、`and → total=1` 正常。
 - 最终结果：**已处理**（服务端错误码更准确 + 测试方法已记录；作者侧复验未反馈，标记为"待我验证"）。
+
+### 报错记录 5：浏览器打不开 http://localhost:8080/swagger-ui/index.html（后端未运行）
+> 专档见 `docs/debug-log.md` 报错记录 5；本条为同步条目。
+
+- 报错原文：作者原话"http://localhost:8080/swagger-ui/index.html 拒绝了我的链接"。
+- 运行命令：作者浏览器访问该地址；AI 诊断 `netstat -ano | grep ":8080"`、`tasklist //FI "IMAGENAME eq java.exe"`、`curl -w "%{http_code}" http://localhost:8080/api/health`。
+- 相关代码或文件：与项目代码无关；阶段 2 每批实测结束后 AI 都会停服并清理派生 JVM，故"访问时服务未运行"属常态。
+- 定位过程：`netstat` 无 8080 监听、`tasklist` 无 java 进程、`curl` 返回 `HTTP 000`（退出码 7）→ 判定为"服务根本没启动"，排除代理 / IPv6 / 端口占用。
+- 修复方案：重新启动后端（Swagger UI 只在运行期间可访问），并在 `README.md`《常见问题排查》新增该现象一行。
+- 修复后验证：`GET /api/health → 200`、`GET /swagger-ui/index.html → 200`（`<title>Swagger UI</title>`）、`GET /v3/api-docs → 200`；`netstat` 显示 `0.0.0.0:8080 LISTENING`（PID 24680）。作者侧浏览器复验未反馈，标记为"待我验证"。
+- 最终结果：**已修复**（AI 侧实测通过）。根因：后端未运行——"浏览器拒绝连接"在本项目已出现三次，排查第一步应始终是"确认服务是否在监听"。
 
 ---
 

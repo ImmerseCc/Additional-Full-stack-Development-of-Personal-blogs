@@ -2,6 +2,7 @@ package com.example.blog.service;
 
 import com.example.blog.common.BizException;
 import com.example.blog.common.ErrorCode;
+import com.example.blog.common.PageParams;
 import com.example.blog.common.TimeFormats;
 import com.example.blog.model.Article;
 import com.example.blog.model.ArticleCreateRequest;
@@ -25,9 +26,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ArticleService {
 
-    private static final int DEFAULT_PAGE = 1;
-    private static final int DEFAULT_SIZE = 10;
-    private static final int MAX_SIZE = 20;
     private static final int SUMMARY_MAX_LENGTH = 120;
     private static final String TAG_MODE_AND = "and";
     private static final String TAG_MODE_OR = "or";
@@ -48,14 +46,7 @@ public class ArticleService {
      */
     public PageVO<ArticleSummaryVO> listArticles(Integer pageParam, Integer sizeParam, String keywordParam,
                                                  String tagsParam, String tagModeParam, String statusParam) {
-        int page = (pageParam == null) ? DEFAULT_PAGE : pageParam;
-        if (page < 1) {
-            throw new BizException(ErrorCode.PARAM_FORMAT_ERROR, "page 必须从 1 开始");
-        }
-        int size = (sizeParam == null) ? DEFAULT_SIZE : sizeParam;
-        if (size < 1 || size > MAX_SIZE) {
-            throw new BizException(ErrorCode.PARAM_FORMAT_ERROR, "size 需在 1-" + MAX_SIZE + " 之间");
-        }
+        PageParams params = PageParams.of(pageParam, sizeParam);
         String tagMode = (tagModeParam == null || tagModeParam.isBlank())
                 ? TAG_MODE_AND
                 : tagModeParam.trim().toLowerCase(Locale.ROOT);
@@ -78,11 +69,18 @@ public class ArticleService {
 
         long total = articleRepository.countSummaries(keyword, tagNames, matchAllTags, statusFilter);
         if (total == 0) {
-            return PageVO.of(List.of(), page, size, 0);
+            return PageVO.of(List.of(), params.page(), params.size(), 0);
         }
         List<ArticleSummaryVO> items = articleRepository.findSummaries(
-                keyword, tagNames, matchAllTags, statusFilter, size, (page - 1) * size);
-        return PageVO.of(items, page, size, total);
+                keyword, tagNames, matchAllTags, statusFilter, params.size(), params.offset());
+        return PageVO.of(items, params.page(), params.size(), total);
+    }
+
+    /** 文章是否存在，不存在抛 40004（评论 / 点赞接口共用）。 */
+    public void requireArticleExists(long id) {
+        if (!articleRepository.existsById(id)) {
+            throw new BizException(ErrorCode.NOT_FOUND, "文章不存在：id=" + id);
+        }
     }
 
     /** 文章详情（契约 §四 · 3）：含正文；prev / next 属阶段 8，阶段 2 恒为 null。 */

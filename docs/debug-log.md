@@ -145,6 +145,34 @@
 
 ---
 
+## 报错记录 5：浏览器打不开 http://localhost:8080/swagger-ui/index.html（后端未运行）
+
+- **报错原文**：作者原话"http://localhost:8080/swagger-ui/index.html 拒绝了我的链接"（未提供浏览器错误码原文，如 `ERR_CONNECTION_REFUSED`）
+- **运行命令**：作者在浏览器访问该地址；AI 侧诊断命令 `netstat -ano | grep ":8080"`、`tasklist //FI "IMAGENAME eq java.exe"`、`curl -o /dev/null -w "%{http_code}" http://localhost:8080/api/health`
+- **相关代码或文件**：与项目代码无关。背景：阶段 2 每批实测结束后，AI 都会按惯例停掉后端并清理派生 JVM（避免占住 8080），因此"浏览器访问时服务并不在运行"属于常态
+- **定位过程**：
+  1. `netstat -ano | grep ":8080" | grep -i listening` → **无输出**：8080 上没有任何进程在监听；
+  2. `tasklist //FI "IMAGENAME eq java.exe"` → `没有运行的任务匹配指定标准`：机器上没有任何 JVM 在跑；
+  3. `curl http://localhost:8080/api/health` → `HTTP 000`（curl 退出码 7，连接被拒绝）→ 判定为"**服务根本没启动**"，而不是代理、IPv6 或端口占用问题；
+  4. 交叉确认：阶段 2 批 3 实测收尾时执行过 `taskkill //PID 30228 //F`，此后 8080 空闲至今。
+- **修复方案**：重新启动后端即可（Swagger UI 与 `/api/*` 只在后端运行期间可访问）：
+
+  ```bash
+  # Git Bash
+  cd "/d/code/Additional Full-stack Development of Personal blogs/backend" && ./mvnw -B -ntp spring-boot:run
+  ```
+
+  ```powershell
+  # Windows PowerShell / CMD
+  cd "D:\code\Additional Full-stack Development of Personal blogs\backend"; .\mvnw.cmd -B -ntp spring-boot:run
+  ```
+
+  并在 `README.md`《常见问题排查》表中新增一行，把"后端地址打不开"直接指向"后端未启动"。
+- **修复后验证**（AI 实测，真实输出）：重启后 `GET /api/health → 200`、`GET /swagger-ui/index.html → 200`（页面标题 `<title>Swagger UI</title>`）、`GET /v3/api-docs → 200`；`netstat` 显示 `0.0.0.0:8080 LISTENING`（PID 24680）。**作者侧浏览器复验未反馈，标记为"待我验证"。**
+- **最终结果**：**已修复**（AI 侧实测通过）。根因一句话：**后端没在运行**。值得记一笔的是，"浏览器拒绝连接"在本项目已出现三次（报错记录 2 = Vite 只绑定 IPv6、报错记录 3 = 终端工作目录错误、本条 = 后端未启动），共同经验是：**排查顺序的第一步永远是"确认服务是否真的在监听"**。
+
+---
+
 ## 待记录的观察项（尚未构成报错）
 
 | 观察 | 说明 | 状态 |
@@ -154,11 +182,12 @@
 | 终端中文乱码 | AI 侧 Git Bash 输出中文提示时出现乱码（如"关闭后请求"变成了乱码） | 未处理；控制台代码页问题，不是项目问题 |
 | IPv6 地址不再可用 | 修复后 `http://[::1]:5173` 返回 000（预期） | 无需处理；用 `localhost` 或 `127.0.0.1` 均可 |
 | Git Bash 的 `wc -m` 按**字节**计数 | locale 自检：`printf '%s' '中文测试' \| wc -m` 输出 12（字节）而不是 4（字符） | 已绕开：中文长度校验改为按**码点**核对的临时程序（阶段 2 批 2b 实测"摘要截取 120 字"时使用，验证后已删除） |
+| 后台任务有 10 分钟上限，超时只杀包装进程 | 供作者验证 Swagger UI 而启动的后端后台任务在 600 秒后超时被终止，但派生 JVM（PID 24680）**继续存活并正常服务**（`/api/health` 与 `/swagger-ui/index.html` 均 200） | 无需处理；再次印证遗留项 10。后续要给作者长时间演示，应让后端跑在**作者自己的终端**里（或让 AI 用不设超时的方式启动），停服务时按 PID `taskkill` |
 
 ---
 
 ## 当前状态
 
-- 已记录真实报错：**4 条**（1：环境类、非阻塞、无需修复；2：已修复并实测通过；3：使用 / 环境类，已修复并**双方**实测通过；4：工具 / 编码类，已处理，作者侧复验待反馈）
+- 已记录真实报错：**5 条**（1：环境类、非阻塞、无需修复；2：已修复并实测通过；3：使用 / 环境类，已修复并**双方**实测通过；4：工具 / 编码类，已处理；5：使用类——后端未运行，已修复，作者侧复验待反馈）
 - 项目代码层面的报错：**1 条已处理**（报错记录 4 暴露的"查询串解码失败被兜底成 50000"属项目代码改进项，已在 `GlobalExceptionHandler` 修正为 40002）
-- 交付要求"至少 1 次真实报错或调试过程"：**已满足**（第 2、3、4 条均包含完整闭环：报错原文 → 定位 → 修复 → 实测验证）
+- 交付要求"至少 1 次真实报错或调试过程"：**已满足**（第 2、3、4、5 条均包含完整闭环：报错原文 → 定位 → 修复 → 实测验证）
