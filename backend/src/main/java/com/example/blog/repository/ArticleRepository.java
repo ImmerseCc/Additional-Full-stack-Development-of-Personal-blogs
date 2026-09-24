@@ -1,7 +1,10 @@
 package com.example.blog.repository;
 
 import com.example.blog.common.TimeFormats;
+import com.example.blog.model.Article;
 import com.example.blog.model.ArticleSummaryVO;
+import java.sql.PreparedStatement;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -10,6 +13,8 @@ import java.util.Map;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -18,7 +23,8 @@ import org.springframework.stereotype.Repository;
  * <p>统计口径见 docs/data-model.md 第三节「方案 A」：点赞数与评论数在查询时用子查询实时 COUNT，
  * 不落冗余列，因此不存在计数漂移问题。
  *
- * <p>本类当前只含**读方法**（阶段 2 批 2a）；写方法（insert / update / delete 与标签关联维护）在批 2b 补齐。
+ * <p>读方法（列表 / 详情 / 标签批量查询）与写方法（插入 / 更新 / 删除 / 标签关联重建）都在本类；
+ * 评论与点赞的数据访问在批 3 单独实现。
  */
 @Repository
 public class ArticleRepository {
@@ -112,6 +118,58 @@ public class ArticleRepository {
                     .add(rs.getString("name"));
         }, articleIds.toArray());
         return tagsByArticle;
+    }
+
+    /**
+     * 插入文章，返回数据库生成的主键。
+     *
+     * <p>{@code view_count} 不写入，交给建表默认值 0（契约不对外暴露阅读数）。
+     */
+    public long insert(Article article) {
+        String sql = "INSERT INTO article (title, summary, content, cover_url, status, created_at, updated_at)"
+                + " VALUES (?, ?, ?, ?, ?, ?, ?)";
+        KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(connection -> {
+            PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            statement.setString(1, article.getTitle());
+            statement.setString(2, article.getSummary());
+            statement.setString(3, article.getContent());
+            statement.setString(4, article.getCoverUrl());
+            statement.setString(5, article.getStatus());
+            statement.setString(6, TimeFormats.format(article.getCreatedAt()));
+            statement.setString(7, TimeFormats.format(article.getUpdatedAt()));
+            return statement;
+        }, keyHolder);
+        Number key = keyHolder.getKey();
+        if (key == null) {
+            throw new IllegalStateException("插入文章后未取到自增主键");
+        }
+        return key.longValue();
+    }
+
+    /** 全量更新文章字段（不改 created_at），返回受影响行数，0 表示文章不存在。 */
+    public int update(long id, Article article) {
+        String sql = "UPDATE article SET title = ?, summary = ?, content = ?, cover_url = ?, status = ?,"
+                + " updated_at = ? WHERE id = ?";
+        return jdbcTemplate.update(sql, article.getTitle(), article.getSummary(), article.getContent(),
+                article.getCoverUrl(), article.getStatus(), TimeFormats.format(article.getUpdatedAt()), id);
+    }
+
+    /** 删除文章，返回受影响行数，0 表示文章不存在；评论 / 点赞 / 标签关联由外键 ON DELETE CASCADE 清理。 */
+    public int deleteById(long id) {
+        return jdbcTemplate.update("DELETE FROM article WHERE id = ?", id);
+    }
+
+    /** 覆盖式重建文章标签关联：先清空，再按 tagIds 写入（空列表 = 清空标签）。 */
+    public void replaceTags(long articleId, List<Long> tagIds) {
+        jdbcTemplate.update("DELETE FROM article_tag WHERE article_id = ?", articleId);
+        if (tagIds == null || tagIds.isEmpty()) {
+            return;
+        }
+        List<Object[]> batch = tagIds.stream()
+                .map(tagId -> new Object[] {articleId, tagId})
+                .toList();
+        jdbcTemplate.batchUpdate("INSERT INTO article_tag (article_id, tag_id) VALUES (?, ?)", batch);
     }
 
     /** 拼 WHERE 子句，并把占位符对应的参数按顺序追加进 params。 */

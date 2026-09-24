@@ -121,6 +121,32 @@
 - 遗留问题：文章**写路径**（创建 / 更新 / 删除、标签自动创建与清空、外键级联删除实测）留待批 2b；本批改动**尚未 git 提交**。
 - 下一步：阶段 2 批 2b —— 文章写路径（POST / PUT / DELETE + 标签维护 + 级联删除实测）。
 
+### 阶段 2：后端业务实现（批 2b：文章写路径）
+- 我的提示词摘要："批 2a 通过，提交并继续"——先提交批 2a，再按已确认的分批执行批 2b（创建 / 更新 / 删除 + 标签维护 + 级联删除实测）。
+- AI 做了什么：1) 提交批 2a（`b22592d`）；2) 在既有文件上补齐写路径：`ArticleRepository` 增 `insert` / `update` / `deleteById` / `replaceTags`，`TagRepository` 增 `findByName` / `insert`，`TagService` 增 `resolveTagIds`（去重 + 名称长度校验 + 不存在则创建），`ArticleService` 增 `createArticle` / `updateArticle` / `deleteArticle` 及摘要截取、状态归一、可选字段归 null 等私有方法（写方法带 `@Transactional`），`ArticleController` 增 POST / PUT / DELETE；3) 编译 → 启动 → 16 项 curl + JDBC 取证实测；4) 停服、清理派生 JVM 与临时验证文件。
+- 改动文件（全部为**修改**，无新增、无占位文件）：
+  - `backend/src/main/java/com/example/blog/repository/ArticleRepository.java`（写方法 + 类注释更新）
+  - `backend/src/main/java/com/example/blog/repository/TagRepository.java`（`findByName` / `insert`）
+  - `backend/src/main/java/com/example/blog/service/TagService.java`（`resolveTagIds` + 标签名长度校验）
+  - `backend/src/main/java/com/example/blog/service/ArticleService.java`（写路径方法，并注入 `TagService`）
+  - `backend/src/main/java/com/example/blog/controller/ArticleController.java`（POST 201 / PUT / DELETE）
+- 验证命令与结果（均为实测输出）：
+  - `./mvnw -B -ntp compile` → `Compiling 28 source files`、`BUILD SUCCESS`
+  - `POST /api/articles`（不传 summary、正文 185 字、标签含新标签）→ **HTTP 201**，`id=4`、`status:"PUBLISHED"`、`tags:["Vue","级联测试标签"]`
+  - 摘要截取核对（临时程序 `target/SummaryCheck.java` 按码点）→ `summary 码点数 = 120`、`content 码点数 = 185`、`summary == 正文前 120 个字符 ? true`
+  - `GET /api/tags` → 新标签"级联测试标签"已**自动创建**（`id=5`）
+  - `PUT /api/articles/4`（`status=DRAFT`、`tags=["SQLite"]`）→ 200，标签被整体替换为 `["SQLite"]`；`createdAt` 保持 `2026-09-24T19:16:59` 不变，`updatedAt` 变为 `2026-09-24T19:17:01`
+  - `PUT` **不传** `tags` 字段 → 响应 `"tags":[]`（清空语义生效）
+  - 删除前 JDBC 取证 → `article=1, comment=1, like_record=1, article_tag=1`（评论与点赞由临时程序直接写库构造）
+  - `DELETE /api/articles/4` → `HTTP 200` + `{"code":0,"message":"ok","data":null}`
+  - 删除后 JDBC 取证 → `article=0, comment=0, like_record=0, article_tag=0` → **外键 `ON DELETE CASCADE` 真实生效（`current-state.md` 遗留项 12 由此关闭）**
+  - 删除后 `GET /api/articles/4` → `404 + 40004`；`GET /api/tags` → 标签**仍保留**（"级联测试标签"计数归 0，符合契约"标签本身保留"）
+  - 校验类：`POST` 标题为空 → `400 + 40001` + `data.fields:{"title":"标题不能为空"}`；`PUT` / `DELETE` 不存在的 id → `404 + 40004`
+  - 持久化：新建文章 `id=5` → **重启后端后** `GET /api/articles/5` 仍为 `200` 且内容完整，列表 `total=4`
+  - 收尾：`taskkill //PID 16732 //F` 清理派生 JVM、`8080 已释放`；删除 `target/` 下临时文件（`CascadeCheck.java`、`SummaryCheck.java`、`payload-*.json`、`cp.txt`）；`git status` 仅剩 5 个待提交的 Java 文件
+- 遗留问题：数据库里留有本次实测产生的数据（文章 `id=5`「写路径实测：创建一篇文章」与标签 `id=5`「级联测试标签」，后者计数为 0）——保留还是重置由作者决定；本批改动**尚未 git 提交**。
+- 下一步：阶段 2 批 3 —— 评论与点赞（列表 / 发表 / 删除、点赞幂等、visitorId 归属校验）。
+
 ---
 
 ## 报错记录
