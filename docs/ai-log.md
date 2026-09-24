@@ -184,6 +184,14 @@
 - 遗留问题：本批改动**尚未 git 提交**；WAL 模式仍未启用（连接池为 1、单写者场景下收益有限，暂不做并在 `current-state.md` 说明）；后端**仍在运行中**（应作者验证 Swagger UI 需求，用不设超时的方式启动）。
 - 下一步：**阶段 2（批 0–4）全部完成**，等待作者确认；之后进入阶段 3「前端模块一：全局导航与主题」。
 
+### 阶段 3：前端模块一（批 0：开工基线）
+- 我的提示词摘要：新会话开场要求"**先不要写代码**"，先读 6 份文件（`AGENTS.md`、`README.md`、`docs/api-contract.md`、`docs/data-model.md`、`docs/collaboration-log.md`、`docs/current-state.md`），读完后用不超过 10 行总结现状；随后"分批列出需要的事项"；对阶段 3 分批方案（批 0–4）与 8 个决策点逐条确认：**1 同意、2 增加（新增 404 页）、3 三态（主题：亮 / 暗 / 跟随系统）、4 同意、5 同意、6 与 7 同意、8 不拆**（沿用阶段 2 的"每批停下等确认"节奏），并下达"请继续"。
+- AI 做了什么：1) 只读核对前端现状（`App.vue`、`HomeView.vue`、`router/index.js`、`styles/base.css`、`index.html`、`vite.config.js`、`package.json` 与 `src` 目录树），确认 `src/{components,stores,api,utils}` 目前为空目录、路由表仅 `/` + 兜底重定向、`@` 别名已在 `vite.config.js` 配好、`frontend/public/` 确实不存在；2) 核对 `index.html` 首屏防闪脚本（读 `blog:theme`，"无值＝跟随系统"，与批 1 的三态约定一致，预计无需改动）；3) 核对 git 基线与前端构建基线；4) 更正 `README.md` 顶部状态块（阶段 1 / Node 未装 / 首次提交待执行 / 契约仍是草案 → 阶段 3 批 0 / 后端 13 接口已实测 / JDK 26 已验证 / 最新提交 `af2334c` / 契约与模型 v1.0 已确认）；5) 同步 `docs/current-state.md`（最后更新行、接手说明进度、当前阶段与分批、新增决策 K–Q、待确认项改为 README 待同步清单、第四节改为分批计划表、环境事实补 Git 提交链与前端构建基线）。
+- 改动文件：`README.md`（修改：顶部状态块）、`docs/current-state.md`（修改：最后更新行、零节第 2 条、一节、二节关键决策表新增 K–Q、三节、四节、六节 Git 行与新增构建基线行）、`docs/collaboration-log.md`（修改：最后更新行、阶段索引的阶段 3 行改为"进行中：批 0 ✅"）、`docs/ai-log.md`（追加本条目）。均为**修改/追加**，无占位文件，**无前端业务代码改动**。
+- 验证命令与结果（均为实测输出）：`git status --short` → 开工时为**空**（工作区干净）；`git log --oneline -12` → 最新一条为 `af2334c docs: 阶段 2 收尾记录与状态快照（阶段 3 开工前）`；`cd frontend && npm run build` → `✓ 28 modules transformed.`、`dist/index.html 1.30 kB`、`dist/assets/index-BSjQAKIk.js 89.01 kB │ gzip: 34.74 kB`、`✓ built in 160ms`；改文档后 `git diff --stat` → `README.md | 11 +++---`、`docs/current-state.md | 45 +++---`（`2 files changed, 33 insertions(+), 23 deletions(-)`）；全部改动完成后 `git status --short` → 四个 `M`（`README.md`、`docs/current-state.md`、`docs/collaboration-log.md`、`docs/ai-log.md`），无未跟踪文件。
+- 遗留问题：本批改动**尚未 git 提交**（等作者确认后再提交，沿用阶段 2 节奏）；`README.md` 仍有阶段 1 时代的过时描述（第四节前端模块表、"后端功能"状态列、"已知问题与风险"第 2/6 条），已登记在 `docs/current-state.md` 第三节，计划批 4 一并同步；后端保持停止状态（8080 未占用）。
+- 下一步：阶段 3 批 1 —— 主题系统：新建 `frontend/src/stores/theme.js`（三态 + `localStorage['blog:theme']` + 监听 `prefers-color-scheme`）、`frontend/src/components/ThemeToggle.vue`；扩展 `frontend/src/styles/base.css`；`App.vue` 临时挂载切换按钮；核对 `index.html` 防闪脚本；验证用 `npm run build` + 浏览器实测（切换 / 刷新不丢 / 跟随系统）。
+
 ---
 
 ## 报错记录
