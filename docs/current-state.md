@@ -1,34 +1,34 @@
 # 当前状态
 
 > 本文件是项目进度的**唯一实时快照**，每个阶段/批次结束后同步更新；**每个新会话开始时，请先读本文件**。
-> 最后更新：**阶段 4「前端模块二 / 三：文章列表与文章详情」批 3（文章详情 + Markdown 渲染）已完成**（批 0–批 2 已入库 `ec848f3` / `b6f7701` / `af913f0`；批 3 经 14 项 Markdown 管线断言 + 6 项页面实测通过，改动待作者确认后提交）；阶段 0–3 全部完成并入库。**下一步：批 4（TOC + 滚动高亮 + 进场动画 + 图片懒加载）。**
+> 最后更新：**阶段 4「前端模块二 / 三：文章列表与文章详情」批 3（文章详情 + Markdown 渲染）已完成并入库（`44b0d46`）**；批 0–批 2 亦已入库（`ec848f3` / `b6f7701` / `af913f0`）；阶段 0–3 全部完成并入库。**下一步：批 4（TOC + 滚动高亮 + 进场动画 + 图片懒加载）——等作者开工指令。**
 
 ---
 
 ## 零、新会话接手说明（给下一个会话的 AI）
 
 1. **先读三个文件**：`AGENTS.md`（项目总纲与禁止事项）、`docs/current-state.md`（本文件）、`docs/api-contract.md`（接口契约 v1.0，**已确认**，实现时不得擅自改字段）。
-2. **进度**：阶段 0、0.5、1、2、3 已完成并入库；**阶段 4 批 0、批 1、批 2 已入库（`ec848f3`、`b6f7701`、`af913f0`），批 3 已完成但尚未提交**，**当前应从批 4「加分项：TOC + 滚动高亮 + IntersectionObserver 进场动画 + 图片懒加载」开始**；后端 13 个操作已全部实现并实测（见第七节清单）；前端已有导航栏 / 汉堡菜单 / 三态主题 / 404 / 路由过渡 / 页脚 / 接口访问层 / **文章列表（卡片 + 骨架屏 + 空态 + 错误态 + 分页）+ 首页门面 + 文章详情（Markdown 渲染 + 代码高亮 + 加载/404/错误三态）**；**已经没有占位页了**；种子数据为 **12 篇文章 / 8 个标签**，封面为 `frontend/public/images/covers/*.svg`。
+2. **进度**：阶段 0、0.5、1、2、3 已完成并入库；**阶段 4 批 0、批 1、批 2、批 3 已全部入库（`ec848f3`、`b6f7701`、`af913f0`、`44b0d46`）**，**当前应从批 4「加分项：TOC + 滚动高亮 + IntersectionObserver 进场动画 + 图片懒加载」开始**（等作者指令）；后端 13 个操作已全部实现并实测（见第七节清单）；前端已有导航栏 / 汉堡菜单 / 三态主题 / 404 / 路由过渡 / 页脚 / 接口访问层 / **文章列表（卡片 + 骨架屏 + 空态 + 错误态 + 分页）+ 首页门面 + 文章详情（Markdown 渲染 + 代码高亮 + 加载/404/错误三态）**；**已无占位页**；种子数据为 **12 篇文章 / 8 个标签**，封面为 `frontend/public/images/covers/*.svg`。
 3. **日志三件套**：`docs/ai-log.md`（逐轮流水）、`docs/collaboration-log.md`（关键提示词汇总 + 阶段索引 + 阶段记录）、`docs/debug-log.md`（报错专档，已有 **7 条**真实记录 + 9 条观察项）；审计记录在 `docs/audit-report.md`（阶段 9 才做）。
 4. **环境事实**：Node 24.21.0 / npm 11.19.0 已安装；JDK 26 **已验证**可跑 Spring Boot 4.1.1；Maven 未安装但 `mvnw` 可用（依赖已缓存，后端启动约 2 秒）；**后端与前端 dev server 当前均处于停止状态**，需要时用第八节的标准命令启动。
 5. **协作纪律**：分批交付、每批结束停下等确认；未运行的命令写"未运行，需我验证"；不编造运行结果；禁止使用现成博客模板或整站主题。
 6. **本机已踩过的坑（细节都在 `docs/debug-log.md`）**：① Git Bash 里给 `curl` 传中文参数会被按 **GBK** 编码 → 改用预编码 UTF-8 百分号串、`node -e` 的 `fetch`，或用 Swagger UI / PowerShell `Invoke-RestMethod`；② `wc -m` 在本机按**字节**计数（要数中文长度得按码点算）；③ AI 的后台任务有 **10 分钟上限**，超时只杀包装进程、**派生 JVM / node 会继续存活**并占住 8080 / 5173（用 `taskkill //PID <pid> //F` 清理，阶段 3 复现 4 次、阶段 4 已复现 3 次以上）；④ 浏览器提示"拒绝连接"时，排查第一步永远是"确认服务是否真的在监听"；⑤ **内置浏览器的合成点击在部分元素上不送达**（主题按钮点不动，键盘 `Tab` + `Enter` 立刻成功；分页按钮、重试按钮、列表卡片链接的点按是有效的）→ 交互验证优先键盘路径，移动端点按交作者真机；⑥ **路由过渡中间帧读不到"带过渡的子树"**（`page.text.snapshot` / `page.elements.snapshot` 只会读到页头，`wait_for` 文本条件会一直超时，但同期截图正常）→ 先截图确认画面再读结构；⑦ **固定 ID 的幂等种子数据遇到"历史遗留行占用同一 ID"会静默错位**（`INSERT OR IGNORE` 是整行跳过，不是更新），见报错记录 6；⑧ **启动后端前先查 8080**：端口被占不等于程序坏了（见报错记录 7），前端经代理拿到 **502** 通常就是"后端不在监听"。
 7. **前端代码地图（阶段 4 现状）**：
-   - `src/api/`：`http.js`（`request()` 统一入口 + 超时 + 解包 + 错误归一，502/503/504 有可操作文案）、`error.js`（`ApiError` + `isNotFound` / `isValidationError`）、`articles.js`（`fetchArticles` / `fetchArticleDetail`）、`tags.js`（`fetchTags`）；**写接口的 `comments.js` / `likes.js` 等阶段 5 用到时再建**（决策 AB，避免死代码）。
-   - `src/utils/`：`date.js`（契约 ISO 串 → `YYYY-MM-DD`）、`markdown.js`（markdown-it + highlight.js/lib/common + DOMPurify 的渲染管线，导出 `renderMarkdown(source)`；标题自动补 id，供批 4 的 TOC 用）。
-   - `src/components/`：`ArticleList.vue`（四态容器）、`ArticleCard.vue`、`Pagination.vue`、`SkeletonBlock.vue`（骨架原语，含流光）、`ArticleSkeleton.vue`（列表卡片骨架，复用原语）、`MarkdownRenderer.vue`（`v-html` + `:deep()` 正文排版与 hljs 配色映射）；导航与主题组件为阶段 3 产物。
-   - 路由：`/`、`/articles`、`/articles/:id`、`/about` + 404 兜底；列表页码与 `?page=N` 双向同步（第 1 页不带参数）；详情页拿到数据后会把 `document.title` 换成文章标题。
+   - `src/api/`：`http.js`（`request()` 统一入口 + 超时 + 解包 + 错误归一，502/503/504 有可操作文案）、`error.js`（`ApiError` + `isNotFound` / `isValidationError`）、`articles.js`（`fetchArticles` / `fetchArticleDetail`）、`tags.js`（`fetchTags`）；**写接口的 `comments.js` / `likes.js` 等阶段 5 用到时再建**（决策 AB）。
+   - `src/utils/`：`date.js`（契约 ISO 串 → `YYYY-MM-DD`）、`markdown.js`（`renderMarkdown(source)`：markdown-it `html:false` + `highlight.js/lib/common` + DOMPurify；标题自动补 id，供批 4 的 TOC 用）。
+   - `src/components/`：`ArticleList.vue`（四态容器）、`ArticleCard.vue`、`Pagination.vue`、`SkeletonBlock.vue`（骨架原语，含流光）、`ArticleSkeleton.vue`、`MarkdownRenderer.vue`（`v-html` + `:deep()`）；导航与主题组件为阶段 3 产物。
+   - 路由：`/`、`/articles`、`/articles/:id`、`/about` + 404 兜底；列表页码与 `?page=N` 双向同步；详情页拿到数据后把 `document.title` 换成文章标题。
    - 代码高亮配色：`base.css` 末尾的 `--hl-*` 两套语义色（亮 / 暗），决策 V 手写、不引官方主题。
 
 ---
 
 ## 一、当前阶段
 
-**阶段 4「前端模块二 / 三：文章列表与文章详情」：进行中 —— 批 0 ✅、批 1 ✅、批 2 ✅（已入库），批 3 ✅（待提交确认），等作者确认后进入批 4。**
+**阶段 4「前端模块二 / 三：文章列表与文章详情」：进行中 —— 批 0 ✅、批 1 ✅、批 2 ✅、批 3 ✅（均已入库），等作者开工指令后进入批 4。**
 阶段 0–3 全部完成并入库（阶段 3 的点按路径与过渡观感已由作者验收，见第五节第 13、14 条）。
 
 阶段 4 分批（作者已同意方案与 10 个决策点，见第二节决策 R–AA）：
-批 0 开工基线 ✅ → 批 1 API 访问层 ✅ → 批 2 文章列表（卡片 / 悬停动效 / 骨架屏 / 空态与错误态 / 分页控件 / 首页门面）✅ → 批 3 文章详情（Markdown 渲染 + 代码高亮 + 404 与错误分流）✅ → 批 4 加分项（TOC + 滚动高亮 + IntersectionObserver 进场 + 图片懒加载）→ 批 5 收尾与文档。
+批 0 开工基线 ✅ → 批 1 API 访问层 ✅ → 批 2 文章列表 ✅ → 批 3 文章详情（Markdown 渲染 + 代码高亮 + 404 与错误分流）✅ → 批 4 加分项（TOC + 滚动高亮 + IntersectionObserver 进场 + 图片懒加载）→ 批 5 收尾与文档。
 
 ---
 
@@ -44,8 +44,8 @@
 | 阶段 3 批 0–4 | 前端模块一（导航 / 主题 / 404 / 移动端 / 过渡） | 见第四节阶段 3 逐批表；提交 `8c5923d` → `7de72da` → `b257499` → `b1a517f` → `378e3b0` |
 | 阶段 4 批 0 | 开工基线：三项申请落地 + 种子数据 + 数据库重建 | 新建 `frontend/public/`（favicon + 12 张自绘封面 SVG）；`data.sql` 扩为 **12 篇 + 8 标签 + 23 条关联** + 封面回填；数据库按标准路径重置重建并实测幂等；提交 `ec848f3`（20 文件）。**修掉 1 个真实数据问题**（报错记录 6） |
 | 阶段 4 批 1 | `src/api/` 接口访问层 | 新建（完整）`src/api/http.js`、`error.js`、`articles.js`、`tags.js`；**14 项真实调用用例全通过**；提交 `b6f7701`（10 文件）。**期间遇到并记录 1 个真实启动故障**（报错记录 7） |
-| 阶段 4 批 2 | 文章列表 + 首页门面 | 新建（完整）`utils/date.js`、`components/{ArticleCard,ArticleSkeleton,ArticleList,Pagination}.vue` + 占位详情页与路由；重写 `views/{ArticlesView,HomeView}.vue`；**10 项浏览器实测通过**（首页 / 列表 / 翻页 / 深链 / 空态 / 错误态 + 重试 / 移动端 / 暗色 / 悬停 / 骨架屏）；提交 `af913f0`（16 文件） |
-| 阶段 4 批 3 | 文章详情 + Markdown 渲染（本次） | 新建（完整）`src/utils/markdown.js`、`components/MarkdownRenderer.vue`、`components/SkeletonBlock.vue`；`ArticleSkeleton.vue` 改用骨架原语（消除重复 CSS）；`base.css` 追加 `--hl-*` 亮暗两套高亮配色；重写（完整）`views/ArticleDetailView.vue`；`npm run build` **119 模块 / 169ms**；**14 项 Markdown 管线断言 + 6 项页面实测全部通过** |
+| 阶段 4 批 2 | 文章列表 + 首页门面 | 新建（完整）`utils/date.js`、`components/{ArticleCard,ArticleSkeleton,ArticleList,Pagination}.vue` + 占位详情页与路由；重写 `views/{ArticlesView,HomeView}.vue`；**10 项浏览器实测通过**；提交 `af913f0`（16 文件）+ 文档 `bc89da3` |
+| 阶段 4 批 3 | 文章详情 + Markdown 渲染 | 新建（完整）`utils/markdown.js`、`components/MarkdownRenderer.vue`、`components/SkeletonBlock.vue`；`ArticleSkeleton.vue` 改用骨架原语；`base.css` 追加 `--hl-*` 亮暗配色；重写 `views/ArticleDetailView.vue`；**14 项 Markdown 管线断言 + 6 项页面实测全部通过**；`npm run build` 119 模块 / 169ms；提交 `44b0d46`（9 文件，+607/−101） |
 
 **关键决策记录（作者已确认）**
 
@@ -79,7 +79,7 @@
 | Z | 滚动实现：TOC 当前小节高亮用 `scroll` + `getBoundingClientRect`，进场动画用 `IntersectionObserver`；复用逻辑仍放 `src/utils/`，**不新增 `src/` 子目录**（延续决策 P） |
 | AA | 种子数据暴露的 tag ID 冲突（`id=5` 被阶段 2 残留标签占用）**采用标准重置路径解决**：停服 → 删 `blog.db` → 重启自动重建（作者确认，属不可恢复操作，见报错记录 6） |
 | AB | 批 1 **只建 `http.js` / `error.js` / `articles.js` / `tags.js`**；`comments.js` / `likes.js` 推迟到阶段 5（用到时再建），理由是避免死代码（阶段 9 审计含"死代码"检查项） |
-| AC | 批 2 就**先加 `/articles/:id` 路由 + 占位详情页**，让列表卡片的链接有落点而不是掉进 404；正文渲染留批 3（沿用阶段 3 建占位页的既有做法） |
+| AC | 批 2 就**先加 `/articles/:id` 路由 + 占位详情页**，让列表卡片的链接有落点而不是掉进 404；正文渲染留批 3 |
 | AD | 批 3 把骨架"流光"样式收敛为 `SkeletonBlock.vue` 原语，`ArticleSkeleton.vue` 改为复用它（避免同一段动画 CSS 写两遍）；详情页加载态同样用该原语拼装 |
 | AE | 详情页 404（`isNotFound`）**只给"返回列表"，不给"重试"**；其他错误才给重试按钮——重试对"文章不存在"没有意义 |
 
@@ -87,8 +87,8 @@
 
 ## 三、待确认 / 待执行
 
-1. **阶段 4 批 3 已就绪**：改动**尚未 git 提交**（等作者"批 3 通过，提交并继续"）；
-2. **批 4–5 为纯实现**：加分项（TOC / 滚动高亮 / 进场动画 / 图片懒加载）→ 收尾文档；无需再申请新目录；
+1. **阶段 4 前四个批均已入库**：批 0 `ec848f3`、批 1 `b6f7701`、批 2 `af913f0`（+ 文档 `bc89da3`）、批 3 `44b0d46`；**等作者开工指令后进入批 4**；
+2. **批 4–5 为纯实现**：加分项（TOC / 滚动高亮 / 进场动画 / 图片懒加载）→ 收尾文档（README 功能清单与加分项状态、`current-state.md` 整份覆盖、`collaboration-log.md` 阶段 4 记录）；无需再申请新目录；
 3. **无待作者补验项**：第 13、14 条（过渡观感、触摸点按路径）已由作者验收（第五节）；
 4. **可选未做项**（不阻塞）：SQLite WAL 模式（连接池为 1，收益有限）；契约标为阶段 8 的可选项（`GET` / `PUT /api/comments/{id}`、`GET /api/articles/{id}/adjacent`、标签管理 `POST` / `PUT` / `DELETE /api/tags`、`view_count` 计数）。
 
@@ -113,14 +113,14 @@
 | 批 | 内容 | 结果与证据 |
 |---|---|---|
 | 批 0 ✅ | 开工基线（已入库 `ec848f3`） | 新建（完整）`frontend/public/favicon.svg` + `images/covers/*.svg`（12 张自绘 SVG，390–1438 字节，**内置浏览器实拍 13 张全部正常渲染**）；修改（完整）`data.sql`（3→12 篇 + 8 标签 + 23 关联 + 封面回填）、`index.html`（favicon 引用）；数据库按标准路径重置重建；`npm run build` 基线 41 模块 / 137ms |
-| 批 0 实测明细 | 种子与数据库 | 重置后 `GET /api/tags` → 8 个（`5=前端(4)` 等）；`GET /api/articles?size=20&status=ALL` → `total=12`、封面 12/12、无重复 id；`?tags=前端` → 4 篇；`?size=5&page=2` → 5 条；**二次重启数量不变 = 幂等**；契约长度核对 12 篇全部合规 |
+| 批 0 实测明细 | 种子与数据库 | 重置后 `GET /api/tags` → 8 个；`GET /api/articles?size=20&status=ALL` → `total=12`、封面 12/12、无重复 id；`?tags=前端` → 4 篇；`?size=5&page=2` → 5 条；**二次重启数量不变 = 幂等**；契约长度核对 12 篇全部合规 |
 | 批 1 ✅ | `src/api/` 接口访问层（已入库 `b6f7701`） | 新建（完整）`src/api/{http,error,articles,tags}.js`；删除 `src/api/.gitkeep`。**14 项真实调用用例 14/14 通过**（正例 8 + 异常 6：40004 / 40002 / 超时 / 未知路径 / 非法 ID / 主动取消）；`npm run build` 41 模块 / 126ms |
 | 批 1 期间故障 | 后端启动失败 | `APPLICATION FAILED TO START … Port 8080 was already in use`（8080 上已有一个非本会话启动的实例）；确认端口空闲后重启自己的实例完成验证；见 `debug-log.md` 报错记录 7 |
-| 批 2 ✅ | 文章列表 + 首页门面（已入库 `af913f0`） | 新建（完整）`utils/date.js`、`components/{ArticleCard,ArticleSkeleton,ArticleList,Pagination}.vue`；新建（占位）`views/ArticleDetailView.vue` + 路由 `/articles/:id`；重写（完整）`views/{ArticlesView,HomeView}.vue`；`api/http.js` 补 502 文案；`npm run build` 55 模块 / 156ms（共享 `articles-*.js` 4.93 kB） |
+| 批 2 ✅ | 文章列表 + 首页门面（已入库 `af913f0`） | 新建（完整）`utils/date.js`、`components/{ArticleCard,ArticleSkeleton,ArticleList,Pagination}.vue`；新建（占位）`views/ArticleDetailView.vue` + 路由；重写（完整）`views/{ArticlesView,HomeView}.vue`；`api/http.js` 补 502 文案；`npm run build` 55 模块 / 156ms |
 | 批 2 实测明细 | 浏览器 10 项（1280×800 + 375×667） | 首页 3 张卡片；列表 `共 12 篇文章` + 10 张 + 分页；点第 2 页 → `?page=2` + 2 张；深链刷新仍第 2 页；`?page=99` 空态；**错误态 + 重试**（停后端 → 502 文案 → 重启后点重试恢复）；375 单列；暗色配色；悬停上浮 + 标题变主题蓝；骨架屏亮/暗并排正确 |
-| 批 3 ✅ | 文章详情 + Markdown 渲染（待提交） | 新建（完整）`utils/markdown.js`（markdown-it `html:false` + highlight.js/lib/common + DOMPurify；核心规则补标题 id；外链 target+rel；未知语言转义不高亮）、`components/MarkdownRenderer.vue`（`v-html` + `:deep()` 正文排版与 hljs 映射）、`components/SkeletonBlock.vue`（骨架原语）；`components/ArticleSkeleton.vue` 改用原语；`styles/base.css` 追加 `--hl-*` 亮/暗配色；重写（完整）`views/ArticleDetailView.vue`（加载骨架 / 404 / 错误 + 重试 / 正文 + 封面 + 标签 + 创建更新时间 + 点赞评论数；拿到数据后覆盖 `document.title`）。`npm run build` **119 模块 / 169ms**；详情页独立 chunk **283.79 kB（gzip 105.72 kB）**——markdown-it + hljs + dompurify 全在懒加载链上，首页/列表包不受影响（主包 106.82 kB） |
-| 批 3 实测明细 | Markdown 管线 14 项断言（临时页，验证后删除） | 英文标题 `id="hello-world"`；中文标题 `section-1/2/3` 且同名不重复；java 代码块高亮（`hljs-*` + `language-java`）；未知语言不高亮且内容被转义；原始 `<script>`、`<img onerror>` 被**转义为文本**（不是被解析成元素）；`javascript:` 链接未被渲染成 `<a>`；**DOMPurify 直接清洗**：`onerror` / `javascript:` / `style`+`iframe` 均被移除；外链带 `target="_blank"` + `rel="noopener noreferrer"`、站内链接不加 target；表格与引用标签保留；全程未被注入 `window.__xss`。**15/15 PASS** |
-| 批 3 实测明细 | 页面 6 项 | ① `/articles/1` 标题 / 日期 / 标签 / 封面 / 正文（h2 下边框、代码块高亮）正确，`document.title` 变为「项目开篇：为什么手写一个博客，而不是套模板 · 个人博客」；② `/articles/999999` → 「文章不存在」+「ID 为 999999 的文章可能已被删除，或者从未存在。」+ 返回列表（**无重试按钮**，符合决策 AE）；③ 停后端 → 「文章加载失败」+「无法连接后端服务（HTTP 502）…」+ 重试；重启后端后**点重试 → 正常渲染**；④ 暗色与亮色两套代码高亮配色均正确（关键字红、类型橙、函数名紫、注解灰）；⑤ 375×667 详情页排版正常（标题换行、标签、封面、正文、汉堡菜单）；⑥ 骨架屏原语在亮 / 暗两套主题下渲染正确 |
+| 批 3 ✅ | 文章详情 + Markdown 渲染（已入库 `44b0d46`） | 新建（完整）`utils/markdown.js`（markdown-it `html:false` + highlight.js/lib/common + DOMPurify；核心规则补标题 id；外链 target+rel；未知语言转义不高亮）、`components/MarkdownRenderer.vue`、`components/SkeletonBlock.vue`；`ArticleSkeleton.vue` 改用原语；`base.css` 追加 `--hl-*` 亮/暗配色；重写（完整）`ArticleDetailView.vue`。`npm run build` **119 模块 / 169ms**；详情页独立 chunk **283.79 kB（gzip 105.72 kB）**，全在懒加载链上（主包 106.82 kB） |
+| 批 3 实测明细 | Markdown 管线 15 项断言（临时页，验证后删除） | 英文标题 `id="hello-world"`；中文标题 `section-1/2/3` 且同名不重复；java 代码块高亮；未知语言不高亮且转义；原始 `<script>`、`<img onerror>` 被**转义为文本**；`javascript:` 链接未渲染成 `<a>`；**DOMPurify 直接清洗**：`onerror` / `javascript:` / `style`+`iframe` 均被移除；外链带 `target`+`rel`、站内链接不加 target；表格与引用保留；全程未被注入 `window.__xss`。**15/15 PASS** |
+| 批 3 实测明细 | 页面 6 项 | ① `/articles/1` 标题 / 日期 / 标签 / 封面 / 正文（h2 下边框、代码块高亮）正确，`document.title` 变为文章标题；② `/articles/999999` → 「文章不存在」+ 返回链接（**无重试**，决策 AE）；③ 停后端 → 「文章加载失败」+「无法连接后端服务（HTTP 502）…」+ 重试；重启后**点重试 → 正常渲染**；④ 暗色与亮色两套高亮配色均正确；⑤ 375×667 详情页排版正常；⑥ 骨架屏原语亮 / 暗两套渲染正确 |
 | 批 4 | 加分项（TOC + 滚动高亮 + IntersectionObserver 进场动画 + 图片懒加载） | 未开始 |
 | 批 5 | 收尾（构建实测 + 浏览器实拍 + README/docs 同步 + 提交） | 未开始 |
 
@@ -149,7 +149,7 @@
 | 17 | 列表页 `?page` 超过总页数时只显示空态，不会回退到最后一页 | 手输极端页码时体验一般 | 阶段 4 批 5 或阶段 7 视余量决定是否加"越界回退"；当前不做（空态 + 上一页可用） |
 | 18 | 骨架屏的**出现时机**未能真机抓拍（本地请求约 10ms，一闪而过；列表卡片骨架与详情页骨架都是） | 只能证明骨架屏渲染正确，不能证明"加载期间显示多久" | 外观已在亮 / 暗两套主题下独立验证（批 2 实测 ⑩、批 3 实测 ⑥）；真实加载时长在阶段 7 做无限滚动时可一并观察 |
 | 19 | 详情页**没有上一篇 / 下一篇**（契约里 `prev` / `next` 恒为 `null`） | 少一条浏览路径 | 决策 U：阶段 8 实现 `GET /api/articles/{id}/adjacent` 时一并渲染；当前不算缺陷，登记备查 |
-| 20 | 详情页 chunk 体积偏大（283.79 kB / gzip 105.72 kB，含 markdown-it + hljs + dompurify） | 首次进入详情页要多下 ~105 kB（gzip） | 属预期取舍（决策 W：不新增依赖、不做拆包优化）；如阶段 8/9 有余量，可考虑只注册用到的语言（`hljs/lib/core` + 按需注册）进一步瘦身 |
+| 20 | 详情页 chunk 体积偏大（283.79 kB / gzip 105.72 kB，含 markdown-it + hljs + dompurify） | 首次进入详情页要多下 ~105 kB（gzip） | 属预期取舍（决策 W）；如阶段 8/9 有余量，可考虑改用 `hljs/lib/core` + 按需注册语言进一步瘦身 |
 
 ---
 
@@ -166,11 +166,11 @@
 | 数据库 | `backend/data/blog.db`（阶段 4 批 0 按标准路径重置重建）；6 张表 + 7 个索引；`article=12`、`tag=8`、`article_tag=23`；12 篇 `cover_url` 全部非空；二次启动数量一致（幂等）；JDBC URL 已带 `busy_timeout=5000` |
 | 前端静态资源 | `frontend/public/favicon.svg`（390 字节）+ `frontend/public/images/covers/*.svg`（12 张，652–1438 字节）；`index.html` 已引用 favicon；生产构建会复制进 `dist/`（已实测） |
 | 前端接口层 | `frontend/src/api/`：`http.js`（`request()` + `ApiError`，502/503/504 有可操作文案）、`error.js`、`articles.js`、`tags.js`；默认超时 8s |
-| 前端渲染层 | `frontend/src/utils/markdown.js`（`renderMarkdown()`：markdown-it `html:false` + `highlight.js/lib/common` + DOMPurify；标题自动补 id、外链 target+rel）；`frontend/src/components/MarkdownRenderer.vue`（`v-html` + `:deep()`）；`frontend/src/components/SkeletonBlock.vue`（骨架原语） |
+| 前端渲染层 | `frontend/src/utils/markdown.js`（`renderMarkdown()`）、`frontend/src/components/MarkdownRenderer.vue`（`v-html` + `:deep()`）、`frontend/src/components/SkeletonBlock.vue`（骨架原语） |
 | 服务状态 | **后端与前端 dev server 均已停止**（批 3 验证后复查 `5173/8080 均已释放`） |
 | 网络 | `start.spring.io`、`registry.npmjs.org`、`repo.maven.apache.org`、`repo1.maven.org` 可达；`github.com` 不可达（报错记录 1） |
-| Git 仓库 | 分支 `main`；提交链：`501065a` → `25e280e` → `e9ab336` → `92a5cc6` → `b22592d` → `5c210a3` → `4b1700b` → `7174838` → `af2334c` → `8c5923d` → `7de72da` → `b257499` → `b1a517f` → `378e3b0` → `550f576` → `ec848f3` → `b6f7701` → `af913f0` → `bc89da3`（批 2 文档）；**阶段 4 批 3 改动尚未提交**（`git status`：3 个 `M` + 3 个 `??`，全部在预期范围内） |
-| 前端构建基线 | 阶段 4 批 3 实测：`npm run build` → `✓ 119 modules transformed` / `✓ built in 169ms`；`dist/assets/ArticleDetailView-*.js 283.79 kB / gzip 105.72 kB`（懒加载，只在详情页加载）、`ArticleDetailView-*.css 5.07 kB`、主包 `index-*.js 106.82 kB / gzip 41.79 kB`、`index css 6.77 kB`、`dist/index.html 1.36 kB` |
+| Git 仓库 | 分支 `main`；提交链：`501065a` → `25e280e` → `e9ab336` → `92a5cc6` → `b22592d` → `5c210a3` → `4b1700b` → `7174838` → `af2334c` → `8c5923d` → `7de72da` → `b257499` → `b1a517f` → `378e3b0` → `550f576` → `ec848f3`（批 0）→ `b6f7701`（批 1）→ `af913f0`（批 2）→ `bc89da3`（批 2 文档）→ `44b0d46`（批 3）；**工作区干净** |
+| 前端构建基线 | 阶段 4 批 3 实测：`npm run build` → `✓ 119 modules transformed` / `✓ built in 169ms`（提交后回归 212ms）；`dist/assets/ArticleDetailView-*.js 283.79 kB / gzip 105.72 kB`（懒加载，只在详情页加载）、`ArticleDetailView-*.css 5.07 kB`、主包 `index-*.js 106.82 kB / gzip 41.79 kB`、`index css 6.77 kB`、`dist/index.html 1.36 kB` |
 | 前端页面结构 | 四条正式路由（`/`、`/articles`、`/articles/:id`、`/about`）+ 404 兜底；页头 / 主内容 / 页脚三段式；主题键 `blog:theme`；列表页页码与 `?page=N` 同步；详情页动态标题；组件：`ArticleList`、`ArticleCard`、`ArticleSkeleton`、`Pagination`、`SkeletonBlock`、`MarkdownRenderer`、`AppHeader`、`AppFooter`、`ThemeToggle`；**已无占位页** |
 
 ---
