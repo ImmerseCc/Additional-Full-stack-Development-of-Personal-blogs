@@ -278,3 +278,20 @@
 | 4 | 功能迭代 | 待发生（计划：前端阅读进度条、回到顶部按钮、无限滚动 + 骨架屏；后端分页增强、标题关键词搜索、统一错误返回格式） | 待发生 | 待发生 |
 | 5 | 报错修复 | 作者报告"在验证时，localhost 拒绝了我的链接"，并按 AI 要求提供真实证据（dev server 启动输出、`netstat` 与三条 `curl` 实测结果、"未开代理"），随后在三选一中确认"加 `host: '127.0.0.1'`" | 先只读探测排除"服务根本没运行"；再依据 `[::1]:5173 LISTENING` + `127.0.0.1 -> 000` 判定 Vite 只绑定 IPv6；修改 `frontend/vite.config.js` 一行；实测 `127.0.0.1 → 200`、`localhost → 200`、`[::1] → 000`（预期）；把完整闭环写入 `docs/debug-log.md` 报错记录 2 | **修复了"浏览器打不开 127.0.0.1"的真实故障**，并沉淀一条可复用的排错记录（报错原文 → 定位 → 修复 → 验证） |
 | 6 | 项目审计 | 待发生（计划在阶段 9，覆盖能否按 README 启动、6 个前端模块、6 个后端功能、响应式、深色对比度、输入校验、敏感信息、数据读写、重复代码、死代码、未使用依赖） | 待发生 | 待发生 |
+
+
+### 阶段 3：前端模块一（批 1：主题系统 —— Pinia 三态 + CSS 变量扩展 + ThemeToggle）
+- 我的提示词摘要："批 0 通过，提交并继续"——先提交批 0，再执行批 1（主题系统：三态 store + 变量扩展 + 切换按钮）。
+- AI 做了什么：1) 提交批 0（`8c5923d`）；2) 新建主题 store：三态 `light / dark / system`，`localStorage['blog:theme']` 存"用户选择"、`<html data-theme>` 存"实际生效值"，监听 `matchMedia('(prefers-color-scheme: dark)')` 的 `change` 事件，`init()` 幂等；3) 新建 `ThemeToggle.vue`：三态循环按钮，内联 SVG（太阳 / 月亮 / 显示器，不引图标库），`aria-label` 同时描述"当前态 + 下一态"，配 `visually-hidden` 的 `aria-live` 播报节点；4) 把 `base.css` 从占位版扩展为完整主题令牌（语义色含 hover / soft / contrast、阴影、尺寸、圆角、动效变量、`color-scheme`、`:focus-visible` 焦点环、`.visually-hidden`、`prefers-reduced-motion` 归零）；5) `App.vue` 临时挂载按钮并调用 `theme.init()`（批 2 移入导航栏右侧，决策 N）；6) 删除 `src/stores/.gitkeep`、`src/components/.gitkeep` 两个已被真实代码取代的占位文件；7) 用**内置浏览器**（非人工目视）实测三态循环与刷新持久化；8) 收尾清理派生 node 进程。
+- 改动文件：
+  - 新建（完整）：`frontend/src/stores/theme.js`、`frontend/src/components/ThemeToggle.vue`
+  - 修改（完整）：`frontend/src/styles/base.css`（占位版 → 完整主题令牌与基础样式）、`frontend/src/App.vue`（临时挂载主题按钮 + 初始化 store）
+  - 删除：`frontend/src/stores/.gitkeep`、`frontend/src/components/.gitkeep`
+  - 未改动：`frontend/index.html`——防闪脚本本就把"非 light/dark 的存量值"当作跟随系统，与三态语义一致，核对通过故不动
+- 验证命令与结果（均为实测输出）：
+  - `npm run build` → `✓ 31 modules transformed.`（批 0 为 28）、`dist/assets/index-Y-5gGLfM.css 3.06 kB │ gzip: 1.21 kB`（批 0 为 0.77 kB）、`dist/assets/index-ChXPHl9b.js 95.69 kB │ gzip: 37.51 kB`、`✓ built in 131ms`
+  - dev server 冒烟：`curl 127.0.0.1:5173/ → 200`、`/src/stores/theme.js → 200`、`/src/components/ThemeToggle.vue → 200`（新增模块被正常转译）
+  - **浏览器实测**（内置浏览器打开 `http://127.0.0.1:5173/`，逐步留截图）：初始态可访问名 `主题：跟随系统（点击切换为亮色）` 且浅色渲染 → 点击 → `主题：亮色（点击切换为暗色）` → 再点击 → `主题：暗色（点击切换为跟随系统）` 且**整页转深色** → `tab.reload` 后仍为 `暗色` 且深色渲染（**刷新不丢**：localStorage + 防闪脚本共同生效）→ 再点击回到 `跟随系统`，页面回到浅色（该浏览器偏好为浅色）
+  - 收尾：`TaskStop` 后 `netstat` 显示 PID 18788 仍监听 `127.0.0.1:5173`（已知项 10 再次复现：只杀包装进程、派生 node 存活）→ `taskkill //PID 18788 //F` → 复查 `5173/8080 均已释放`
+- 遗留问题：本批改动**尚未 git 提交**（等作者确认后提交）；**"跟随系统"在页面打开期间响应系统主题切换**（`matchMedia` 的 `change` 分支）**未由 AI 实测**——内置浏览器无法切换系统偏好，需作者用 DevTools → Rendering → Emulate CSS `prefers-color-scheme` 或直接改系统主题验证；"深色用户首屏不闪白"需目视复核（防闪脚本逻辑未改，风险低）。
+- 下一步：阶段 3 批 2 —— 导航栏（`AppHeader.vue`）+ 路由目标（`/articles`、`/about`、404 页）+ 当前页高亮 + `document.title` 同步；把主题按钮从 `App.vue` 移入导航栏右侧（决策 N）。

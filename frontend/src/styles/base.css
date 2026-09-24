@@ -1,30 +1,59 @@
-/* 全局基础样式（阶段 1 批 3 占位版）
-   阶段 3 会扩展为完整主题系统：更多语义色、透明度层级、动效时长变量等。
-   命名约定：--color-* 语义色、--radius-* 圆角、--transition-* 过渡。 */
+/* 全局基础样式与主题令牌（阶段 1 批 3 为占位版，阶段 3 批 1 扩展为完整主题系统）
+   命名约定：--color-* 语义色、--radius-* 圆角、--duration-* / --ease-* 动效、--shadow-* 阴影。
+   主题由 <html data-theme="light|dark"> 驱动，三态（亮 / 暗 / 跟随系统）逻辑见 src/stores/theme.js。 */
 
 :root {
+  color-scheme: light;
+
   --color-bg: #ffffff;
   --color-bg-soft: #f6f8fa;
+  --color-bg-elevated: #ffffff;
   --color-text: #1f2328;
   --color-muted: #59636e;
   --color-accent: #3b6ef5;
+  --color-accent-hover: #2c55c9;
+  --color-accent-soft: rgba(59, 110, 245, 0.14);
+  --color-accent-contrast: #ffffff;
   --color-border: #d8dee4;
+  --color-border-strong: #b6bec8;
 
+  --shadow-sm: 0 1px 2px rgba(31, 35, 40, 0.08);
+  --shadow-md: 0 8px 20px rgba(31, 35, 40, 0.12);
+
+  --content-max: 1040px;
+  --header-height: 64px;
+  --radius-sm: 8px;
   --radius-card: 12px;
+  --radius-pill: 999px;
+
+  --duration-fast: 0.15s;
+  --duration-base: 0.25s;
+  --duration-slow: 0.4s;
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
 
   --transition-theme:
-    background-color 0.25s ease,
-    color 0.25s ease,
-    border-color 0.25s ease;
+    background-color var(--duration-base) ease,
+    color var(--duration-base) ease,
+    border-color var(--duration-base) ease;
 }
 
 [data-theme='dark'] {
+  color-scheme: dark;
+
   --color-bg: #14171c;
   --color-bg-soft: #1b2026;
+  --color-bg-elevated: #1e242b;
   --color-text: #e6edf3;
   --color-muted: #9aa7b2;
   --color-accent: #6f9bff;
+  --color-accent-hover: #8fb2ff;
+  --color-accent-soft: rgba(111, 155, 255, 0.18);
+  --color-accent-contrast: #10141a;
   --color-border: #2b3138;
+  --color-border-strong: #3d4650;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.45);
 }
 
 * {
@@ -55,4 +84,70 @@ h3 {
 
 a {
   color: var(--color-accent);
+  text-decoration-color: var(--color-border-strong);
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: ui-monospace, SFMono-Regular, Consolas, 'Courier New', monospace;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background-color: var(--color-accent-soft);
+}
+
+/* 视觉隐藏但保留给屏幕阅读器（主题切换的状态播报等无障碍用途） */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* 尊重系统"减少动态效果"：把动效时长归零，后续阶段的过渡与动画直接继承这些变量 */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0s;
+    --duration-base: 0s;
+    --duration-slow: 0s;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
