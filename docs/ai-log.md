@@ -339,3 +339,11 @@
   - 收尾：`TaskStop` 后残留 node PID 26488 占 5173 → `taskkill` → 复查 `5173/8080 均已释放`
 - 遗留问题：本批改动**尚未 git 提交**；**过渡的时长与缓动手感需作者目视评价**（工具只能抓到中间帧，无法评判观感）；`prefers-reduced-motion` 下动画禁用未实测（需在系统或 DevTools 开启"减少动态效果"复验）；批 3 遗留的**触摸点按路径**（开合菜单 / 遮罩关闭 / 点链接后自动收起）仍待作者真机补验。
 - 下一步：**阶段 3 全部完成，等待作者验收**；之后进入阶段 4 —— 前端模块二 / 三：文章列表（卡片、分页或无限滚动、骨架屏、悬停动效）+ 文章详情（Markdown 渲染、代码高亮、阅读进度条、TOC、图片懒加载），届时需实现 `src/api/` 请求层并申请新增 `frontend/public/`（封面图）与补齐全量种子文章。
+
+### 阶段 3：收尾（作者确认批 4 · 提交入库 · 文档同步）
+- 我的提示词摘要："批 4 通过，提交"——同时要求按阶段收尾惯例执行两件事：**把本阶段记录追加到 `docs/collaboration-log.md`**、**覆盖 `docs/current-state.md` 的完整内容**（作者明确"每个阶段结束后会新开会话"）。
+- AI 做了什么：1) 提交批 4（`378e3b0`）——共 8 个文件：新建 `frontend/src/components/AppFooter.vue`，修改 `frontend/src/App.vue`、`frontend/src/styles/base.css`、`README.md`、`docs/{current-state,ai-log,collaboration-log,debug-log}.md`；2) **整份覆盖 `docs/current-state.md`**（阶段 3 完成快照：零节接手说明、逐批结果表、决策 A1–Q、遗留问题 14 条、环境事实与完整提交链、第八节贴士含 5173 残留进程处理）；3) 在 `docs/collaboration-log.md` 补齐阶段 3 阶段记录、回填提交链并把阶段索引第 3 行改为"**作者已确认**"、更新最后更新行；4) `README.md` 状态块改为"阶段 3 已完成并入库（批 4 提交 `378e3b0`）"；5) 追加本条目。
+- 改动文件：`docs/current-state.md`（整份覆盖）、`docs/collaboration-log.md`（阶段记录 + 索引 + 最后更新）、`README.md`（状态块）、`docs/ai-log.md`（追加本条目）。**均为文档，无业务代码改动。**
+- 验证命令与结果（均为实测输出）：提交批 4 前 `git status --short -uall` → 7 个 `M` + 1 个 `??`（`AppFooter.vue`）；`git commit` 后 `git log --oneline -1` → `378e3b0 feat(frontend): 阶段 3 批 4 路由过渡 + 页脚拆分 + README 与文档同步`，`git status` 干净；文档改动后重跑 `npm run build` → `✓ built in 140ms`（作回归确认，构建不受文档影响）。
+- 遗留问题：见 `docs/current-state.md` 第五节（共 14 条）。其中第 6、7 条（`frontend/public/`、种子文章补到约 12 篇）需**阶段 4 开工前向作者申请**；第 13、14 条（过渡观感、触摸点按路径）需作者目视 / 真机补验。
+- 下一步：**阶段 4** —— 前端模块二 / 三：文章列表（卡片、分页或无限滚动、骨架屏、悬停动效）与文章详情（Markdown 渲染、代码高亮、阅读进度条、TOC、图片懒加载）；按惯例由作者**新开会话**后再启动。
