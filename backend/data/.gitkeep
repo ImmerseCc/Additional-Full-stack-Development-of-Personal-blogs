@@ -1,0 +1,4 @@
+# 占位文件（保留数据目录）
+# 后端启动后会在本目录生成 SQLite 数据库：blog.db（可能伴随 blog.db-wal / blog.db-shm）
+# 数据库文件已在 .gitignore 中忽略（backend/data/*.db*），不要提交
+# 重置数据：停止后端 → 删除 blog.db 及 -wal / -shm → 重新启动（会自动重建表并写入种子数据）

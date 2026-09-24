@@ -1,0 +1,3 @@
+# 占位文件（保留空目录）
+# 工具函数计划：debounce.js（搜索防抖）、storage.js（localStorage 读写，键名统一 blog: 前缀）、format.js（时间格式化）
+# 阶段 5 在此目录添加业务代码。

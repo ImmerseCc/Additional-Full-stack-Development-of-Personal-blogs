@@ -1,0 +1,3 @@
+# 占位文件（保留空包）
+# 模型层：实体、请求 DTO、响应 VO
+# 计划类（阶段 2）：Article、Tag、Comment、LikeRecord，ArticleRequest / ArticleVO / CommentVO / PageVO 等

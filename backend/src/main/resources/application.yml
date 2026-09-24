@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: blog-backend
+
+  datasource:
+    # SQLite 单文件数据库；路径相对于启动目录（即在 backend/ 下运行时生成 backend/data/blog.db）
+    url: jdbc:sqlite:./data/blog.db
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      # SQLite 是单写者模型：连接池限制为 1，从源头避免并发写入互相等锁
+      maximum-pool-size: 1
+      # SQLite 默认不开启外键约束，必须每个连接显式打开，否则 ON DELETE CASCADE 不生效
+      connection-init-sql: PRAGMA foreign_keys = ON
+
+  sql:
+    init:
+      # 每次启动都执行 schema.sql / data.sql：两个脚本分别用 CREATE TABLE IF NOT EXISTS 与
+      # INSERT OR IGNORE 写成幂等形式，可以重复执行而不产生重复数据
+      mode: always
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+      continue-on-error: false
+
+# 本项目为学习/演示项目：接口不做鉴权（契约见 docs/api-contract.md）。
+# 部署到公网前必须自行增加鉴权、限流与 HTTPS。
+logging:
+  level:
+    root: INFO
+    com.example.blog: DEBUG

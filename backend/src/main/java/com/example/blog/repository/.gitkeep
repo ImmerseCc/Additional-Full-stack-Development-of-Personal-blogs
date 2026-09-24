@@ -1,0 +1,3 @@
+# 占位文件（保留空包）
+# 数据访问层：只用 JdbcTemplate 执行 SQL 与结果映射，不写业务判断
+# 计划类（阶段 2）：ArticleRepository、CommentRepository、LikeRepository、TagRepository

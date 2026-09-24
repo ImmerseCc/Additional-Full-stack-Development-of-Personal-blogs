@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.1.1</version>
+    <relativePath/> <!-- 从仓库解析父 POM -->
+  </parent>
+
+  <groupId>com.example</groupId>
+  <artifactId>blog-backend</artifactId>
+  <version>0.1.0</version>
+  <name>blog-backend</name>
+  <description>VibeCoding 个人博客后端（Spring Boot + JdbcTemplate + SQLite）</description>
+
+  <properties>
+    <java.version>21</java.version>
+    <!-- 版本均已核对 Maven Central metadata：sqlite-jdbc latest = 3.53.4.0 -->
+    <sqlite-jdbc.version>3.53.4.0</sqlite-jdbc.version>
+    <!-- springdoc 3.1.1 的父 POM 声明 Spring Boot 4.1.0，与本项目 Boot 4.1.1 同一代 -->
+    <springdoc.version>3.1.1</springdoc.version>
+  </properties>
+
+  <dependencies>
+    <!-- Web 层：注意 Spring Boot 4 的 Web 起步依赖名是 spring-boot-starter-webmvc（不再是 -web） -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
+    </dependency>
+
+    <!-- 数据访问层：JdbcTemplate（不使用 ORM） -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-jdbc</artifactId>
+    </dependency>
+
+    <!-- 参数校验：Bean Validation -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+
+    <!-- SQLite 驱动 -->
+    <dependency>
+      <groupId>org.xerial</groupId>
+      <artifactId>sqlite-jdbc</artifactId>
+      <version>${sqlite-jdbc.version}</version>
+    </dependency>
+
+    <!-- Swagger / OpenAPI 文档（后端加分项；阶段 2 起生效） -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>${springdoc.version}</version>
+    </dependency>
+
+    <!-- 说明：暂不引入测试起步依赖（当前无任何测试），避免"声明了却没用"的未使用依赖 -->
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

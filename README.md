@@ -73,6 +73,19 @@ npm run dev
 | Swagger / OpenAPI | 待实现（阶段 2） |
 | 数据库文件 | `backend/data/blog.db` |
 
+### 常见问题排查
+
+| 现象 | 原因 | 处理 |
+|---|---|---|
+| 浏览器打不开 `http://127.0.0.1:5173`，但 `http://localhost:5173` 正常 | Windows 下 Vite 未显式设置 `host` 时可能只绑定 IPv6 `::1` | 本项目已在 `vite.config.js` 设置 `server.host = '127.0.0.1'` 规避；若仍出现，确认用的是最新配置并重启 dev server |
+| `npm run dev` 报找不到命令 | 终端是在安装 Node 之前打开的，PATH 未刷新 | 关闭并重新打开终端（本项目已安装 Node 24.21.0） |
+| 前端请求 `/api/...` 报 502 / ECONNREFUSED | 后端没启动，或不是 8080 | 先启动后端，确认控制台出现 Tomcat 监听 8080 |
+| 5173 被占用 | 其他程序占用端口 | 前端会自动换端口（看终端输出的 `Local:` 地址） |
+| 8080 被占用 | 其他程序占用端口 | 修改 `backend/src/main/resources/application.yml` 的 `server.port`，同时改 `frontend/vite.config.js` 的代理 target |
+| 后端启动报数据库错误 | 工作目录不对，或 `backend/data/` 不存在 | 必须在 `backend/` 目录下执行 `./mvnw spring-boot:run`；确认 `backend/data/` 存在（含 `.gitkeep`） |
+
+> 前两条来自真实排错过程，完整记录（报错原文、定位、修复、验证）见 `docs/debug-log.md` 报错记录 2。
+
 ---
 
 ## 三、项目结构

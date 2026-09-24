@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="个人博客：手写 Vue 3 前端 + Spring Boot 后端（不使用任何现成模板）" />
+    <title>个人博客 · VibeCoding</title>
+    <script>
+      // 主题防闪脚本：在首屏渲染前决定 data-theme，避免深色用户看到白屏闪烁。
+      // 读取的键名 blog:theme 与后续「模块六 本地持久化」保持一致；完整主题系统在阶段 3 实现。
+      (function () {
+        try {
+          var saved = localStorage.getItem('blog:theme')
+          var theme =
+            saved === 'dark' || saved === 'light'
+              ? saved
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+          document.documentElement.setAttribute('data-theme', theme)
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light')
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
