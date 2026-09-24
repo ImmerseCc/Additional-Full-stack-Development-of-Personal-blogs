@@ -368,3 +368,21 @@
 - 验证命令与结果（均为实测输出）：`npm run build` → `✓ 41 modules transformed` / `✓ built in 137ms`（基线）与 `138ms`（含资源后）；后端 `./mvnw -B -ntp spring-boot:run` + `node -e` 的 `fetch` 实测：`/api/health → 200`、`/api/tags → 8 个`、`/api/articles?size=20&status=ALL → total=12`（封面 12/12）、`?tags=前端 → 4`、`size=5&page=2 → 5 条`；二次启动幂等复核全部一致。完整闭环见 `docs/debug-log.md` **报错记录 6** 与 `docs/current-state.md` 第四节阶段 4 批 0 行。
 - 遗留问题：本批改动**尚未 git 提交**（等作者"批 0 通过"）；阶段 8 可选项（评论改查 / 上一篇下一篇 / 标签管理 / `view_count`）与 SQLite WAL 仍未做（不阻塞）。
 - 下一步：阶段 4 批 1 —— `src/api/` 请求层：`http.js`（统一拼 `/api`、解包 `{code,message,data}`、HTTP 与业务码分流、抛出可读错误）+ `articles.js` / `tags.js` / `comments.js` / `likes.js`（字段名严格照 `docs/api-contract.md` v1.0），并删除 `src/api/.gitkeep`。
+
+### 阶段 4：前端模块二 / 三（批 1：`src/api/` 接口访问层）
+- 我的提示词摘要："**遗留问题确认与你理解一致，批 0 通过，请继续**"——先提交批 0，再执行批 1（`src/api/` 请求层）。
+- AI 做了什么：
+  1. **提交批 0**：`ec848f3 chore: 阶段 4 批 0 开工基线（种子 12 篇 + 封面与 favicon + 数据库重建）`，20 个文件（7 改 + 13 新增）；
+  2. **批 1 实现**：新建 `src/api/http.js`（统一 `/api` 前缀、查询串拼装并对**中文值做 URI 编码**、默认 8s 超时、转发外部 `AbortSignal`、解包 `{code,message,data}`、把 HTTP 层 / 业务码 / 网络失败 / 超时 / 主动取消五类失败归一）、`src/api/error.js`（`ApiError` + `isValidationError` / `isNotFound` 便捷判定）、`src/api/articles.js`（`fetchArticles` / `fetchArticleDetail`，详情做 ID 前置校验）、`src/api/tags.js`（`fetchTags`）；删除 `src/api/.gitkeep`；
+  3. **与计划的一处偏差（已登记为决策 AB）**：批 1 只建上述 4 个文件，**`comments.js` / `likes.js` 推迟到阶段 5**（模块五真正用到时再建），理由是避免死代码（阶段 9 审计含"死代码"检查项）；
+  4. **真实调用验证**：建了一个临时自测页（`frontend/_api-check.html`，不落进 `public/`），经 Vite 代理 `/api` → 8080 跑 **14 个用例**：正例 8（列表默认参数 `total=12`/3 条、中文标签 `tags=前端` → 4 篇、多标签 `or`、多标签 `and` → 2 篇且两篇都含 Vue+前端、`keyword=SQLite`、详情 id=1、标签列表 8 个、`size=5&page=3` → 2 条），异常 6（详情 999999 → `code=40004`/HTTP 404、`page=abc` → `40002`/400、`timeout=1ms` → "请求超时（1ms）"、未知路径 → `40004`、非法 ID 前置校验、外部 `AbortController` → "请求已取消"）；**14/14 通过**；
+  5. 第一轮跑出 1 个 FAIL 是**我的断言写错**（`tags=Vue,前端` 且 `and` 我预期 1 篇，实际库里同时含两标签的有 2 篇：id 11 与 id 4）→ 修正断言后重跑全绿，**接口层本身无缺陷**；
+  6. 期间遇到 1 个真实启动故障（见报错记录 7）：我 22:04 启动后端时 `Port 8080 was already in use`，8080 上已有一个 **22:01:20** 启动、**非本会话启动**的实例（AI 未对它执行任何 kill）；取证后确认端口空闲再重启自己的实例，随后完成全部验证；
+  7. 收尾：删除临时自测页（`dist/` 已确认无残留）、`npm run build` → 41 模块 / **126ms**、停掉后端与 dev server 并清理派生进程（`5173/8080 均已释放`）。
+- 改动文件：
+  - 新建（**完整**）：`frontend/src/api/http.js`、`frontend/src/api/error.js`、`frontend/src/api/articles.js`、`frontend/src/api/tags.js`
+  - 删除：`frontend/src/api/.gitkeep`
+  - 修改（文档）：`README.md`（《常见问题排查》补 8080 占用与 502 两行）、`docs/current-state.md`、`docs/collaboration-log.md`、`docs/debug-log.md`、`docs/ai-log.md`（本条目）
+- 验证命令与结果（均为实测输出）：提交 `ec848f3`（`git log` 可查）；临时自测页 14 项用例 **14/14 PASS**（正例与异常码全部符合契约：40004 / 40002 / 超时 / 取消）；`npm run build` → `✓ 41 modules transformed` / `✓ built in 126ms`（api 层尚未被视图引用，故未进包）；收尾 `netstat` 复查 `5173/8080 均已释放`。
+- 遗留问题：本批改动**尚未 git 提交**（等作者"批 1 通过"）；`src/utils/.gitkeep` 仍保留（批 2 / 批 4 会用到 `src/utils/`）；前端接口层暂无自动化回归（沿用"临时自测页 + 验证后删除"的做法，见 `current-state.md` 遗留项 16）。
+- 下一步：阶段 4 批 2 —— 文章列表：`src/components/ArticleCard.vue`（卡片 + 悬停动效）、`ArticleList.vue`（loading / 空态 / 错误态）、骨架屏组件、`Pagination.vue`（决策 S）、重写 `views/ArticlesView.vue` 与 `views/HomeView.vue`（决策 T：首页＝简介 + 最新 3–5 篇 + 入口），`src/utils/` 放日期格式化与标签串组装。

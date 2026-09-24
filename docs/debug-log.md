@@ -195,6 +195,52 @@
 
 ---
 
+## 报错记录 7：`spring-boot:run` 启动失败——`Port 8080 was already in use`（进程 / 环境类，非代码缺陷）
+
+- **报错原文**（后端启动日志，逐字摘录）：
+
+  ```
+  ***************************
+  APPLICATION FAILED TO START
+  ***************************
+
+  Description:
+
+  Web server failed to start. Port 8080 was already in use.
+
+  Action:
+
+  Identify and stop the process that's listening on port 8080 or configure this application to listen on another port.
+
+  [ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:4.1.1:run (default-cli) on project blog-backend: Process terminated with exit code: 1
+  ```
+
+- **运行命令**：`cd backend && ./mvnw -B -ntp spring-boot:run`（阶段 4 批 1 联调验证前启动后端）
+- **相关代码或文件**：与项目代码无关（端口与进程层面）。相关配置：`backend/src/main/resources/application.yml` 的 `server.port: 8080`、`frontend/vite.config.js` 的代理 target
+- **定位过程**：
+  1. 启动前按惯例查过端口（当时 `5173/8080 均已释放`），故失败原因不是"我没清理干净"；
+  2. 失败后立刻取证：`netstat -ano | grep ":8080" | grep -i listening` → `LISTENING 23456`；`tasklist //FI "IMAGENAME eq java.exe"` → `17524` 与 `23456`；`curl http://localhost:8080/api/health → 200` —— **8080 上确有一个健康实例在服务**；
+  3. 用 PowerShell 取进程启动时间：`17524 → 22:01:18`、`23456 → 22:01:20`（wrapper 与 fork 出的应用 JVM 相差 2 秒，正是 `spring-boot:run` 的典型形态），而**我这次启动是 22:04:21** → 判定"先到者占用端口，我的实例被顶掉"；
+  4. `TaskList` 确认本会话只有一个活着的后台任务（前端 dev server），**没有遗留的后端任务** → 这两个 JVM **不是本会话启动的**（推测是作者在本机终端里自己起的验证实例）；AI 对它们**未执行任何 kill**；
+  5. 约 1 分钟后它们自行消失（`netstat` 显示 8080 空闲、java 进程为 0），期间 AI 同样未执行停止命令 —— **来源与消失原因均未确认，按事实记录，不推测**；
+  6. 附带现象：上面的实例消失后，前端经 Vite 代理的自测页**全部返回 `HTTP 502`**，前端 `ApiError` 如实报出 `status=502` —— 与报错记录 5 同源（"后端不在监听"），也侧面验证了错误归一化按预期工作。
+- **修复方案**：确认 8080 已空闲后，重新启动自己的实例即可（**无任何代码改动**）：
+
+  ```bash
+  # Git Bash
+  cd "/d/code/Additional Full-stack Development of Personal blogs/backend" && ./mvnw -B -ntp spring-boot:run
+  ```
+
+  ```powershell
+  # Windows PowerShell / CMD
+  cd "D:\code\Additional Full-stack Development of Personal blogs\backend"; .\mvnw.cmd -B -ntp spring-boot:run
+  ```
+
+- **修复后验证**（AI 实测，真实输出）：重启后 `GET http://localhost:8080/api/health → 200`，经 5173 代理 `GET /api/health → 200`；随后 14 项接口层用例 **14/14 通过**。
+- **最终结果**：**已恢复**。两条可复用经验：① **启动后端前先查 8080**——"端口被占用"先确认是不是**已有实例在正常服务**，不要一上来就改端口；② 前端经代理拿 **502** 时，先怀疑后端不在监听（与报错记录 5 同一类判断）。
+
+---
+
 ## 待记录的观察项（尚未构成报错）
 
 | 观察 | 说明 | 状态 |
@@ -212,6 +258,6 @@
 
 ## 当前状态
 
-- 已记录真实报错：**6 条**（1：环境类、非阻塞、无需修复；2：已修复并实测通过；3：使用 / 环境类，已修复并**双方**实测通过；4：工具 / 编码类，已处理；5：使用类——后端未运行，已修复，作者侧复验待反馈；6：**数据类——种子数据固定 tag ID 与历史残留行冲突，已按标准路径重置数据库修复并复验幂等**）
+- 已记录真实报错：**7 条**（1：环境类、非阻塞、无需修复；2：已修复并实测通过；3：使用 / 环境类，已修复并**双方**实测通过；4：工具 / 编码类，已处理；5：使用类——后端未运行，已修复，作者侧复验待反馈；6：**数据类——种子数据固定 tag ID 与历史残留行冲突，已按标准路径重置数据库修复并复验幂等**；7：**进程 / 环境类——8080 已被另一个实例占用导致后端启动失败，已恢复**）
 - 项目代码层面的报错：**1 条已处理**（报错记录 4 暴露的"查询串解码失败被兜底成 50000"属项目代码改进项，已在 `GlobalExceptionHandler` 修正为 40002）
-- 交付要求"至少 1 次真实报错或调试过程"：**已满足**（第 2、3、4、5、6 条均包含完整闭环：报错原文 → 定位 → 修复 → 实测验证）
+- 交付要求"至少 1 次真实报错或调试过程"：**已满足**（第 2、3、4、5、6、7 条均包含完整闭环：报错原文 → 定位 → 修复 → 实测验证）

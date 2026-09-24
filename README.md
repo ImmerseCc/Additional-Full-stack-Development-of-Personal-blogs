@@ -85,7 +85,8 @@ npm run dev
 | 浏览器打不开 `http://localhost:8080/swagger-ui/index.html`（提示拒绝连接） | **后端没在运行**——Swagger UI 与 `/api/*` 只在后端运行期间可访问 | 先启动后端，等控制台出现 `Started BlogApplication` 再刷新页面；完整记录见 `docs/debug-log.md` 报错记录 5 |
 | 前端请求 `/api/...` 报 502 / ECONNREFUSED | 后端没启动，或不是 8080 | 先启动后端，确认控制台出现 Tomcat 监听 8080 |
 | 5173 被占用 | 其他程序占用端口 | 前端会自动换端口（看终端输出的 `Local:` 地址） |
-| 8080 被占用 | 其他程序占用端口 | 修改 `backend/src/main/resources/application.yml` 的 `server.port`，同时改 `frontend/vite.config.js` 的代理 target |
+| 8080 被占用（后端启动报 `Port 8080 was already in use`） | 8080 上已有另一个实例在监听——可能是你自己先前启动、还没关掉的后端，也可能是上一次未清理干净的残留进程 | **先确认再处理**：`netstat -ano \| grep ":8080" \| grep -i listening` 查到 PID，确认不是你要保留的实例后 `taskkill //PID <pid> //F`；确实需要两个实例并行，才去改 `application.yml` 的 `server.port`，并同步改 `vite.config.js` 的代理 target（完整记录见 `docs/debug-log.md` 报错记录 7） |
+| 前端请求 `/api/...` 返回 502 | 后端不在监听（进程已退出或被别的东西顶掉） | 先 `curl http://localhost:8080/api/health` 确认后端是否存活；后端不在就重新启动（同上一行的排查顺序） |
 | 启动日志出现 `WARNING: A restricted method in java.lang.System has been called` | JDK 24+ 对 sqlite-jdbc 加载本地库的限制提示，**仅警告**，不影响功能 | 无需处理；若想消除，可在启动命令追加 `--enable-native-access=ALL-UNNAMED`（本项目默认不加，保持标准启动命令简洁） |
 | 后端启动报数据库错误 | 工作目录不对，或 `backend/data/` 不存在 | 必须在 `backend/` 目录下执行 `./mvnw spring-boot:run`；确认 `backend/data/` 存在（含 `.gitkeep`） |
 

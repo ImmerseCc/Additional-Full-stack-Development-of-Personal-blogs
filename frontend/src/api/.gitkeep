@@ -1,4 +1,0 @@
-# 占位文件（保留空目录）
-# api 层计划：request.js（统一 fetch 封装，解析 {code,message,data} 与错误提示）、
-#            articles.js（文章接口）、comments.js（评论接口）、likes.js（点赞接口）
-# 阶段 6 在此目录添加业务代码；契约见 docs/api-contract.md（v1.0 已确认）。
