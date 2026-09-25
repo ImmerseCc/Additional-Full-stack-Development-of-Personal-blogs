@@ -726,3 +726,17 @@
 - 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 316ms`、`ArticlesView-m5IhYzsY.js 8.63 kB │ gzip 3.73 kB`；`npm run smoke` → `全部通过：97/97 项断言`；浏览器 6 项见第 5 点。
 - 遗留问题：**遗留 18（骨架屏出现时机抓拍）仍未闭环** —— 首屏骨架与追加骨架的代码 / `aria-busy` 均已就位，但本机请求约 10ms 返回，"滚动 + 截图放进同一批"仍只会拿到"页面已变化 / 截图晚于加载完成"（与阶段 5 的 Toast 抓拍同源的工具限制）；建议留到演示时用真机或浏览器网络节流观察。另：**`Pagination.vue` 成为无引用文件**（疑似死代码），删除与否待作者在批 3 确认时一并拍板。
 - 下一步：**批 4 —— 窄屏目录折叠入口**（决策 BK：正文上方「本页目录」折叠面板，点条目后自动收起；闭环遗留 22），做完停下等作者确认。
+
+### 阶段 7：功能迭代一（批 4：窄屏目录折叠入口）
+- 我的提示词摘要："**A,批 3 通过，请继续**"（作者确认批 3，并选 A：`Pagination.vue` 在**批 6 收尾时删除**）。
+- AI 做了什么：
+  1. **`frontend/src/components/TableOfContents.vue`**：新增 `emit('navigate', id)`（点条目后通知父级）与 `showTitle` prop（折叠面板自带「本页目录」标题时关掉组件内的「目录」标题，避免同一块出现两个标题）；
+  2. **`frontend/src/views/ArticleDetailView.vue`**：正文上方新增原生 `<details>`「本页目录」折叠面板（`ref="tocPanel"` + `closeTocPanel()` 把 `open` 置否），`@media (min-width: 1024px)` 下整体隐藏（桌面继续用右侧固定目录）；补充样式（自定义箭头 + 展开旋转、收掉 `summary` 默认 marker、时长走 `--duration-fast` 令牌，reduced-motion 自动失效）并更新文件头注释；
+  3. **实测中自查并修正 1 个真实缺陷**：最初写成"先滚动、再收起面板"——面板收起带来的高度塌陷会把目标标题顶到视口上方（实测点「技术栈」后，标题落到视口之上，只剩正文段落）。改为**先 `emit('navigate')` 让父级同步收起、再 `scrollIntoView`**，重测标题正好落在页头下方；
+  4. **浏览器实测 5 项**：① **375×667**：正文上方出现「本页目录」（默认收起；右侧固定目录不显示）；② 键盘 `Enter` 展开 → 4 个条目（h3 缩进正确、当前小节高亮、焦点环可见）；③ 选「技术栈」→ 跳转后标题落在页头下方（修复后）+ **面板自动收起**（滚回顶部确认箭头朝下）；④ **768×1024**：折叠面板显示、右侧固定目录隐藏；⑤ **1280 桌面**：折叠面板隐藏、右侧固定目录照常（无回归）；
+  5. **工具限制（记入 `docs/debug-log.md` 观察项）**：触摸模拟下，合成点击 `<summary>` **不触发** `<details>` 开合（两次坐标点击均无效，`click_if_interactive` 只把它识别成 generic 角色），键盘路径（元素 ref + `Enter`）一次成功 —— 与"合成点击偶发不送达"同源，属工具限制而非项目缺陷；
+  6. **回归与留档**：`npm run build` → **214ms**（详情 chunk **17.62 → 18.29 kB**，gzip 6.64 kB）；`npm run smoke` → **97/97 项断言**；`docs/demo/stage7-06-toc-panel-375.png`（375 宽下的折叠面板展开态）归档。
+- 改动文件：修改（**完整**）`frontend/src/components/TableOfContents.vue`、`frontend/src/views/ArticleDetailView.vue`；新增截图 `docs/demo/stage7-06-toc-panel-375.png`；文档 `README.md`、`docs/{ai-log,current-state,collaboration-log,debug-log}.md`。**未新增依赖**。
+- 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 214ms`、`ArticleDetailView-BY_HHQyR.js 18.29 kB │ gzip 6.64 kB`；`npm run smoke` → `全部通过：97/97 项断言`；浏览器 5 项见第 4 点。
+- 遗留问题：本批闭环**遗留 22（窄屏目录入口）**；`Pagination.vue` 删除已按作者选择排入**批 6**；新增 2 条观察项（合成点击对 `<summary>` 无效；"跳转后收起"造成目标偏移 —— 已在同批次修正）。
+- 下一步：**批 5 —— 遗留 29 / 30 修正**（`CommentForm` 暴露 `clearStatus()` 供删除评论后清提示；亮色主色改 `#3563e0` 并复测对比度），做完停下等作者确认。

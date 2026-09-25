@@ -3,12 +3,14 @@
 // 真实调用 GET /api/articles/{id}，把 Markdown 正文交给 MarkdownRenderer。
 // 三种状态各自可辨：加载中（骨架）/ 出错（可重试）/ 文章不存在（404 文案，不重试而是引导回列表）。
 // 决策 U：prev / next 契约里恒为 null（阶段 8 才实现），本批不渲染该区块。
-// 决策 Y / Z：目录取"真实渲染出来的标题"（保证 id 与正文一致），桌面右侧固定栏、窄屏隐藏；
+// 决策 Y / Z：目录取"真实渲染出来的标题"（保证 id 与正文一致），桌面右侧固定栏；
+//             窄屏（< 1024px）改为正文上方的「本页目录」折叠面板（阶段 7 批 4，决策 BK）；
 //             当前小节高亮由 utils/scrollSpy.js 的 scroll + getBoundingClientRect 计算。
 // 阶段 5 批 3：正文下方挂评论区；评论区自己取数与维护总数，只把总数回传给头部 meta 的「评论 N」。
 // 阶段 5 批 4：正文下方再加点赞按钮（LikeButton），计数同样以后端返回为准并回传给 meta。
 // 阶段 7 批 1：页头下沿挂阅读进度条（ReadingProgress），进度按页面滚动比例计算（滚到底 = 100%）。
 // 阶段 7 批 2：Markdown 渲染管线改为**动态加载**（决策 BH），正文渲染期间用骨架兜底。
+// 阶段 7 批 4：窄屏补「本页目录」折叠面板（原生 <details>），点条目后自动收起。
 import { computed, defineAsyncComponent, nextTick, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import CommentSection from '@/components/CommentSection.vue'
@@ -33,6 +35,8 @@ const loading = ref(true)
 const error = ref(null)
 const headings = ref([])
 const bodyRoot = ref(null)
+// 窄屏「本页目录」折叠面板（阶段 7 批 4，决策 BK）：挂在 <details> 上，点条目后自动收起
+const tocPanel = ref(null)
 
 const { activeId, measure } = useScrollSpy(() => headings.value)
 
@@ -53,6 +57,10 @@ function onLikeCountChange(count) {
   if (article.value) {
     article.value.likeCount = count
   }
+}
+
+function closeTocPanel() {
+  if (tocPanel.value) tocPanel.value.open = false
 }
 
 // 目录直接从渲染结果里取：这样 id 与正文标题天然一致，不需要再把 Markdown 解析一遍
@@ -151,6 +159,28 @@ onMounted(load)
             loading="lazy"
             decoding="async"
           />
+
+          <details v-if="headings.length" ref="tocPanel" class="detail__toc">
+            <summary class="detail__toc-summary">
+              本页目录
+              <svg class="detail__toc-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                <path
+                  d="M6 8l4 4 4-4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </summary>
+            <TableOfContents
+              :headings="headings"
+              :active-id="activeId"
+              :show-title="false"
+              @navigate="closeTocPanel"
+            />
+          </details>
 
           <div ref="bodyRoot" v-reveal="{ delay: 120 }" class="detail__body">
             <Suspense>
@@ -302,6 +332,52 @@ onMounted(load)
   margin-bottom: 28px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
+}
+
+/* 窄屏「本页目录」折叠面板（阶段 7 批 4，决策 BK）：桌面已有右侧固定目录，这里整体隐藏 */
+.detail__toc {
+  margin-bottom: 24px;
+  background-color: var(--color-bg-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+.detail__toc-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+/* 收起浏览器默认的三角标记，改用右侧箭头 */
+.detail__toc-summary::-webkit-details-marker {
+  display: none;
+}
+
+.detail__toc-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--color-muted);
+  transition: transform var(--duration-fast) ease;
+}
+
+.detail__toc[open] .detail__toc-icon {
+  transform: rotate(180deg);
+}
+
+.detail__toc .toc {
+  padding: 4px 16px 14px;
+}
+
+@media (min-width: 1024px) {
+  .detail__toc {
+    display: none;
+  }
 }
 
 /* 正文下方的互动区（阶段 5 批 4：点赞按钮） */
