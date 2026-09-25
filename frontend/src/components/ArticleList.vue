@@ -1,13 +1,18 @@
 <script setup>
 // 文章列表容器（阶段 4 批 2）：统一处理四种状态（加载中 / 出错 / 空结果 / 有数据），
 // 列表页与首页都只关心"拿数据 + 传进来"，空态与错误态文案不重复写两遍。
+// 阶段 7 批 3：新增 appending —— 无限滚动取下一页时保留已有列表，只在末尾补两具骨架（决策 S）。
 import ArticleCard from './ArticleCard.vue'
 import ArticleSkeleton from './ArticleSkeleton.vue'
 import EmptyState from './EmptyState.vue'
 
+const APPENDING_SKELETONS = 2
+
 defineProps({
   articles: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  // 追加加载中（无限滚动）：列表已有内容，末尾追加骨架而不是整片替换
+  appending: { type: Boolean, default: false },
   // ApiError 实例；有值即进入错误态
   error: { type: Object, default: null },
   skeletonCount: { type: Number, default: 6 },
@@ -43,9 +48,16 @@ const emit = defineEmits(['retry', 'empty-action'])
       @action="emit('empty-action')"
     />
 
-    <ul v-else class="article-list__grid">
+    <ul v-else class="article-list__grid" :aria-busy="appending ? 'true' : undefined">
       <li v-for="(article, index) in articles" :key="article.id" v-reveal="{ delay: Math.min(index, 6) * 40 }">
         <ArticleCard :article="article" />
+      </li>
+      <li
+        v-for="n in appending ? APPENDING_SKELETONS : 0"
+        :key="`appending-${n}`"
+        aria-hidden="true"
+      >
+        <ArticleSkeleton />
       </li>
     </ul>
   </div>

@@ -712,3 +712,17 @@
 - 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 231ms`，`ArticleDetailView-BOJ8CDln.js 17.62 kB │ gzip 6.42 kB`、`MarkdownRenderer-FVb6hk9Q.js 281.34 kB │ gzip 104.55 kB`、`_plugin-vue_export-helper-BCR32NG1.js 70.36 kB`；`npm run smoke` → `全部通过：97/97 项断言`。
 - 遗留问题：**遗留 20 / 27 部分闭环** —— 首屏不再被约 280 kB 的管线阻塞、404 与错误态完全不加载管线；但**详情页完整浏览的总下载量不变**（正文本来就需要管线）。要真正降低总字节数须走 BH 的 ② 号方案（`highlight.js/lib/core` + 按需注册语言）—— **待作者决策**（种子文章实际用到的语言为 sql 4 / json 3 / js 2 / java 1，另有 10 个未标注语言的代码块本来就走"不认识就转义"路径）；**未覆盖项**：管线 chunk 加载失败时的表现未演练（dev 模式会走 Vite 报错覆盖层，与生产行为不一致），如实登记。
 - 下一步：**批 3 —— 列表页：无限滚动 + 骨架屏**（决策 BG：累积加载、`?page` = 已加载页数、滚动时 `replace`；闭环遗留 18），做完停下等作者确认。
+
+### 阶段 7：功能迭代一（批 3：列表页 —— 无限滚动 + 骨架屏）
+- 我的提示词摘要："**批 2 通过，请继续，选A**"（作者确认批 2，并选定 A：BH② 的 `hljs/lib/core` 按需注册语言**暂不做**，记录在案）。
+- AI 做了什么：
+  1. **`frontend/src/views/ArticlesView.vue` 重构为累积加载**（决策 S / BG）：`load(targetPage)` 支持一次取多页（深链 `?page=3` 按顺序把前 3 页都取回来），循环里用每页返回的 `totalPages` 收敛 `limit`，**页数越界仍收敛到最后一页**（遗留 17 的行为保持）；地址栏语义＝"已加载到第 N 页"，滚动追加与越界收敛统一走 `replace`；
+  2. **重复取数守卫**：新增只含筛选条件的 `filterSignature`，与"当前列表实际渲染时用的签名"比对 —— 滚动追加后 `replace` 写回地址栏会再次触发 watcher，该守卫保证那一次不再发请求；筛选条件一变则照常整表重取；
+  3. **哨兵 + 兜底按钮**：底部 `IntersectionObserver` 哨兵（`rootMargin: 240px`，提前触发）；每次追加后 `disconnect + observe` 重新观察，避免"新内容还没把哨兵顶出视口"时卡住；同时保留可见的「加载更多」按钮（键盘 / 读屏可用，环境不支持 IO 时兜底）——追加中按钮文案变「正在加载…」（不卸载、不夺焦）、失败显示行内错误并可重试、到底显示「已经到底了 · 共 N 篇」；另有 `role="status"` 的无障碍播报；
+  4. **追加骨架**：`frontend/src/components/ArticleList.vue` 新增 `appending` prop —— 追加时保留已有卡片，只在网格末尾补 2 具 `ArticleSkeleton`，并在 `<ul>` 上标 `aria-busy`；
+  5. **浏览器实测 6 项（真实浏览器）**：① `/articles` 首屏 10 篇 + 底部「加载更多」按钮（元素快照中为 `offscreen`，符合预期）；② 滚动到底 → 自动加载第 2 页 → 12 篇 +「已经到底了 · 共 12 篇」+ 地址栏变为 `?page=2`；③ **键盘路径**（元素快照取 ref → `press_key` + `Enter`）同样加载第 2 页并写回 `?page=2`；④ **越界** `?page=99` → **33ms** 内收敛为 `?page=2`（`page.wait_for` url 精确匹配命中）且 12 篇全加载；⑤ 筛选态 `?keyword=SQLite` → 「筛选出 3 篇文章」、document 级按钮快照中**无**「加载更多」（已到底）；⑥ 首页 `/` 不受影响（`ArticleList` 默认 `appending=false`）；
+  6. **回归与留档**：`npm run build` → **316ms**（`ArticlesView` **8.63 kB**，较批 2 的 8.80 kB −0.17 kB）；`npm run smoke` → **97/97 项断言**；`docs/demo/stage7-05-infinite-scroll-end.png`（列表底部：12 篇 +「已经到底了」+ 回到顶部按钮）归档。
+- 改动文件：修改（**完整**）`frontend/src/views/ArticlesView.vue`（整体重构：状态 / 取数 / 底部区域 / 样式）、`frontend/src/components/ArticleList.vue`（`appending` prop + 末尾骨架 + `aria-busy`）；新增截图 `docs/demo/stage7-05-infinite-scroll-end.png`；文档 `README.md`、`docs/{ai-log,current-state,collaboration-log}.md`。**未新增依赖**；`Pagination.vue` 仍在仓库中但**已无任何引用**（是否删除待作者拍板）。
+- 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 316ms`、`ArticlesView-m5IhYzsY.js 8.63 kB │ gzip 3.73 kB`；`npm run smoke` → `全部通过：97/97 项断言`；浏览器 6 项见第 5 点。
+- 遗留问题：**遗留 18（骨架屏出现时机抓拍）仍未闭环** —— 首屏骨架与追加骨架的代码 / `aria-busy` 均已就位，但本机请求约 10ms 返回，"滚动 + 截图放进同一批"仍只会拿到"页面已变化 / 截图晚于加载完成"（与阶段 5 的 Toast 抓拍同源的工具限制）；建议留到演示时用真机或浏览器网络节流观察。另：**`Pagination.vue` 成为无引用文件**（疑似死代码），删除与否待作者在批 3 确认时一并拍板。
+- 下一步：**批 4 —— 窄屏目录折叠入口**（决策 BK：正文上方「本页目录」折叠面板，点条目后自动收起；闭环遗留 22），做完停下等作者确认。
