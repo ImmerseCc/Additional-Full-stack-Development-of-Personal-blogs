@@ -1,9 +1,10 @@
 <script setup>
 import AppFooter from '@/components/AppFooter.vue'
 import AppHeader from '@/components/AppHeader.vue'
+import ToastStack from '@/components/ToastStack.vue'
 import { useThemeStore } from '@/stores/theme'
 
-// 根组件：页头（导航 + 主题按钮）+ 路由内容（带过渡）+ 页脚。
+// 根组件：页头（导航 + 主题按钮）+ 路由内容（带过渡）+ 页脚 + 全局 Toast（阶段 5 批 4）。
 // 路由过渡类 .page-* 定义在 src/styles/base.css，动效时长走 CSS 变量，
 // 因此 prefers-reduced-motion 下自动禁用（变量被归零）。
 const theme = useThemeStore()
@@ -21,6 +22,7 @@ theme.init()
       </RouterView>
     </main>
     <AppFooter />
+    <ToastStack />
   </div>
 </template>
 

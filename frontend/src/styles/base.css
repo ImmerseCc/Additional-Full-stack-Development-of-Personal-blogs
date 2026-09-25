@@ -15,6 +15,7 @@
   --color-accent-hover: #2c55c9;
   --color-accent-soft: rgba(59, 110, 245, 0.14);
   --color-accent-contrast: #ffffff;
+  --color-like: #d6336c;
   --color-border: #d8dee4;
   --color-border-strong: #b6bec8;
 
@@ -51,6 +52,7 @@
   --color-accent-hover: #8fb2ff;
   --color-accent-soft: rgba(111, 155, 255, 0.18);
   --color-accent-contrast: #10141a;
+  --color-like: #ff7b9c;
   --color-border: #2b3138;
   --color-border-strong: #3d4650;
 

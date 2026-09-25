@@ -6,9 +6,11 @@
 // 决策 Y / Z：目录取"真实渲染出来的标题"（保证 id 与正文一致），桌面右侧固定栏、窄屏隐藏；
 //             当前小节高亮由 utils/scrollSpy.js 的 scroll + getBoundingClientRect 计算。
 // 阶段 5 批 3：正文下方挂评论区；评论区自己取数与维护总数，只把总数回传给头部 meta 的「评论 N」。
+// 阶段 5 批 4：正文下方再加点赞按钮（LikeButton），计数同样以后端返回为准并回传给 meta。
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import CommentSection from '@/components/CommentSection.vue'
+import LikeButton from '@/components/LikeButton.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
@@ -35,6 +37,13 @@ const updated = computed(
 function onCommentTotalChange(total) {
   if (article.value) {
     article.value.commentCount = total
+  }
+}
+
+// 点赞 / 取消点赞后回传计数，同步头部 meta 的「点赞 N」
+function onLikeCountChange(count) {
+  if (article.value) {
+    article.value.likeCount = count
   }
 }
 
@@ -134,6 +143,14 @@ onMounted(load)
 
           <div ref="bodyRoot" v-reveal="{ delay: 120 }" class="detail__body">
             <MarkdownRenderer :source="article.content" />
+          </div>
+
+          <div v-reveal class="detail__actions">
+            <LikeButton
+              :article-id="article.id"
+              :initial-count="article.likeCount"
+              @count-change="onLikeCountChange"
+            />
           </div>
 
           <footer v-reveal class="detail__foot">
@@ -261,6 +278,14 @@ onMounted(load)
   margin-bottom: 28px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
+}
+
+/* 正文下方的互动区（阶段 5 批 4：点赞按钮） */
+.detail__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 32px;
 }
 
 .detail__foot {
