@@ -2,6 +2,7 @@
 // 评论表单（阶段 5 批 3，模块五）：昵称 / 邮箱（选填）/ 内容。
 // 校验走 utils/validate.js（与服务端契约同数值）；服务端返回的 40001 字段级原因按同一套字段名回填。
 // 昵称记在本地（blog:commentAuthor）免重复输入；邮箱不记忆（隐私，且契约里本来就只存不返）。
+// 阶段 7 批 5（决策 BM）：向父级暴露 clearStatus()，评论被删除后由父级清掉「评论已发表」提示（闭环遗留 29）。
 import { computed, ref } from 'vue'
 import { createComment } from '@/api/comments'
 import { readRaw, writeRaw } from '@/utils/storage'
@@ -30,6 +31,9 @@ const contentLength = computed(() => content.value.length)
 function clearStatus() {
   if (status.value) status.value = ''
 }
+
+// 评论已在别处删掉时，「评论已发表」就不再是事实了 —— 由 CommentSection 在删除成功后调用
+defineExpose({ clearStatus })
 
 async function submit() {
   if (submitting.value) return

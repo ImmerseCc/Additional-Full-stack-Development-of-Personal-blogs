@@ -740,3 +740,17 @@
 - 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 214ms`、`ArticleDetailView-BY_HHQyR.js 18.29 kB │ gzip 6.64 kB`；`npm run smoke` → `全部通过：97/97 项断言`；浏览器 5 项见第 4 点。
 - 遗留问题：本批闭环**遗留 22（窄屏目录入口）**；`Pagination.vue` 删除已按作者选择排入**批 6**；新增 2 条观察项（合成点击对 `<summary>` 无效；"跳转后收起"造成目标偏移 —— 已在同批次修正）。
 - 下一步：**批 5 —— 遗留 29 / 30 修正**（`CommentForm` 暴露 `clearStatus()` 供删除评论后清提示；亮色主色改 `#3563e0` 并复测对比度），做完停下等作者确认。
+
+### 阶段 7：功能迭代一（批 5：遗留 29 / 30 修正）
+- 我的提示词摘要："**批 4 通过，请继续**"（作者确认批 4 并授权批 5）。
+- AI 做了什么：
+  1. **遗留 30（决策 BL）主色调整**：`frontend/src/styles/base.css` 亮色主色 `#3b6ef5 → #3563e0`，并把同一色的十进制定值一并改为 `rgba(53, 99, 224, 0.14)`（`--color-accent-soft`）；**暗色主色 `#6f9bff` 与 hover `#2c55c9` 不动**；13 张 `frontend/public/**/*.svg` 插画里写死的同色按决策**不改**；
+  2. **对比度独立复核**（node 按 WCAG 相对亮度公式实算，非目测）：`#3b6ef5` 对白底 **4.44**（改前，低于 AA 4.5）→ `#3563e0` **5.23**（达标）；hover `#2c55c9` = 6.46、暗色主色 `#6f9bff` 对深底 = 6.68，均达标；
+  3. **遗留 29（决策 BM）评论提示联动**：`CommentForm.vue` 暴露 `defineExpose({ clearStatus })`；`CommentSection.vue` 新增 `const formRef = ref(null)`（模板上 `ref="formRef"`），在 `onDeleted()` 里调用 `formRef.value?.clearStatus()`；两处文件头注释同步；
+  4. **端到端实测（真实浏览器 + 真实接口，7 项）**：① 在 `/articles/1` 表单里输入内容并提交（键盘 `Enter` 点「发表评论」）→ **59ms** 命中「评论已发表」，列表出现该评论 + 归属「删除」入口、正文 meta 的「评论 1」同步；② 点「删除」→ 行内二次确认（「确认删除」/「取消」）→ 确认 → **`page.wait_for` 以 `state: absent` 断言「评论已发表」消失（3ms 命中、count 0）**，列表回到「还没有评论」空态、状态行与输入框均已清空；③ 数据侧复核（临时 JDBC 直读）：`article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0`，**测试数据零残留**；
+  5. **回归**：`npm run build` → **254ms**（详情 chunk 18.38 kB，+0.09 kB 来自新增的 ref/defineExpose）；`npm run smoke` → **97/97 项断言**；`grep` 复核旧主色**无功能残留**（唯一命中是新加的说明注释）；
+  6. **截图归档**：`docs/demo/stage7-07-comment-posted.png`（发表后：提示 + 归属删除入口）、`stage7-08-comment-after-delete.png`（删除后：提示消失、列表回空态）。
+- 改动文件：修改（**完整**）`frontend/src/styles/base.css`、`frontend/src/components/CommentForm.vue`、`frontend/src/components/CommentSection.vue`；新增截图 `docs/demo/stage7-07…08-*.png`；文档 `docs/{ai-log,current-state,collaboration-log}.md`。**未新增依赖**；`README.md` 本轮**无需改动**（其已知问题清单未涉及主色与评论提示）。
+- 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 254ms`；`npm run smoke` → `全部通过：97/97 项断言`；对比度实算见第 2 点；E2E 见第 4 点。
+- 遗留问题：本批闭环**遗留 29（评论提示）与 30（主色对比度）**。阶段 7 剩余未闭环：18（骨架屏抓拍，工具限制）、20 / 27（拆包总量未降，BH② 已拍板暂不做）、16（浏览器层回归仍靠人工）。
+- 下一步：**批 6 —— 收尾**（删 `Pagination.vue`、整阶段回归 + 截图归档 + 文档同步 + 交付人工验收清单；验收结论由作者给出），做完停下等作者确认。

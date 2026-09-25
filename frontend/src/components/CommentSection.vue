@@ -2,6 +2,7 @@
 // 评论区（阶段 5 批 3，模块五）：列表（按契约倒序）+ 加载更多 + 发表表单 + 删除。
 // 数据全部来自后端（契约 4.8 / 4.9 / 4.12 节）；本地只记"我发过的评论 ID"用于决定是否显示删除入口。
 // 总数通过 total-change 回传给详情页头部 meta 的「评论 N」，避免两处各算一份。
+// 阶段 7 批 5（决策 BM）：删除成功后顺手清掉表单里的「评论已发表」提示（闭环遗留 29）。
 import { computed, onMounted, ref, watch } from 'vue'
 import CommentForm from './CommentForm.vue'
 import CommentItem from './CommentItem.vue'
@@ -26,6 +27,8 @@ const page = ref(1)
 const loading = ref(true)
 const loadingMore = ref(false)
 const error = ref(null)
+// 表单实例：删除评论后调用它的 clearStatus()
+const formRef = ref(null)
 
 const hasMore = computed(() => comments.value.length < total.value)
 
@@ -85,6 +88,8 @@ function onDeleted(commentId) {
   if (comments.value.length !== before) {
     total.value = Math.max(0, total.value - 1)
   }
+  // 评论已经删了，表单下方的「评论已发表」就不再是事实 —— 一并清掉（阶段 7 批 5，决策 BM）
+  formRef.value?.clearStatus()
   publishTotal()
 }
 
@@ -100,7 +105,7 @@ watch(() => props.articleId, load)
       <span v-if="total > 0" class="comments__count">{{ total }}</span>
     </h2>
 
-    <CommentForm :article-id="articleId" @submitted="onSubmitted" />
+    <CommentForm ref="formRef" :article-id="articleId" @submitted="onSubmitted" />
 
     <div v-if="loading" class="comments__skeleton" aria-hidden="true">
       <SkeletonBlock height="16px" width="28%" />

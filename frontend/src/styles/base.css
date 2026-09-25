@@ -11,9 +11,10 @@
   --color-bg-header: rgba(255, 255, 255, 0.88);
   --color-text: #1f2328;
   --color-muted: #59636e;
-  --color-accent: #3b6ef5;
+  /* 阶段 7 批 5（决策 BL）：亮色主色由 #3b6ef5 调深为 #3563e0，白底对比度 4.44 → 5.23，达到 WCAG AA 的 4.5 */
+  --color-accent: #3563e0;
   --color-accent-hover: #2c55c9;
-  --color-accent-soft: rgba(59, 110, 245, 0.14);
+  --color-accent-soft: rgba(53, 99, 224, 0.14);
   --color-accent-contrast: #ffffff;
   --color-like: #d6336c;
   --color-border: #d8dee4;
