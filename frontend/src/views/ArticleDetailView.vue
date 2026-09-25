@@ -1,12 +1,14 @@
 <script setup>
-// 文章详情（阶段 4 批 3 实现，批 4 补目录 / 滚动高亮 / 进场动画）：
+// 文章详情（阶段 4 批 3 实现，批 4 补目录 / 滚动高亮 / 进场动画；阶段 5 批 3 接入评论区）：
 // 真实调用 GET /api/articles/{id}，把 Markdown 正文交给 MarkdownRenderer。
 // 三种状态各自可辨：加载中（骨架）/ 出错（可重试）/ 文章不存在（404 文案，不重试而是引导回列表）。
 // 决策 U：prev / next 契约里恒为 null（阶段 8 才实现），本批不渲染该区块。
 // 决策 Y / Z：目录取"真实渲染出来的标题"（保证 id 与正文一致），桌面右侧固定栏、窄屏隐藏；
 //             当前小节高亮由 utils/scrollSpy.js 的 scroll + getBoundingClientRect 计算。
+// 阶段 5 批 3：正文下方挂评论区；评论区自己取数与维护总数，只把总数回传给头部 meta 的「评论 N」。
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import CommentSection from '@/components/CommentSection.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
@@ -28,6 +30,13 @@ const notFound = computed(() => Boolean(error.value && error.value.isNotFound))
 const updated = computed(
   () => article.value && article.value.updatedAt && article.value.updatedAt !== article.value.createdAt
 )
+
+// 评论区发表 / 删除后回传"当前总数"，让头部 meta 的「评论 N」立刻跟上
+function onCommentTotalChange(total) {
+  if (article.value) {
+    article.value.commentCount = total
+  }
+}
 
 // 目录直接从渲染结果里取：这样 id 与正文标题天然一致，不需要再把 Markdown 解析一遍
 function collectHeadings() {
@@ -131,6 +140,8 @@ onMounted(load)
             <RouterLink to="/articles">← 返回文章列表</RouterLink>
           </footer>
         </article>
+
+        <CommentSection v-if="article" :article-id="article.id" @total-change="onCommentTotalChange" />
       </div>
 
       <aside v-if="headings.length" class="detail-layout__aside">
