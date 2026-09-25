@@ -3,6 +3,7 @@
 // 列表页与首页都只关心"拿数据 + 传进来"，空态与错误态文案不重复写两遍。
 import ArticleCard from './ArticleCard.vue'
 import ArticleSkeleton from './ArticleSkeleton.vue'
+import EmptyState from './EmptyState.vue'
 
 defineProps({
   articles: { type: Array, default: () => [] },
@@ -11,10 +12,13 @@ defineProps({
   error: { type: Object, default: null },
   skeletonCount: { type: Number, default: 6 },
   emptyText: { type: String, default: '暂时没有文章' },
+  // 阶段 5 批 2：空结果可选带说明与操作按钮（如"没有匹配的文章 → 清除筛选"）
+  emptyDescription: { type: String, default: '' },
+  emptyActionText: { type: String, default: '' },
   errorText: { type: String, default: '文章加载失败' }
 })
 
-const emit = defineEmits(['retry'])
+const emit = defineEmits(['retry', 'empty-action'])
 </script>
 
 <template>
@@ -31,7 +35,13 @@ const emit = defineEmits(['retry'])
       <button type="button" class="article-list__retry" @click="emit('retry')">重试</button>
     </div>
 
-    <p v-else-if="articles.length === 0" class="article-list__state">{{ emptyText }}</p>
+    <EmptyState
+      v-else-if="articles.length === 0"
+      :title="emptyText"
+      :description="emptyDescription"
+      :action-text="emptyActionText"
+      @action="emit('empty-action')"
+    />
 
     <ul v-else class="article-list__grid">
       <li v-for="(article, index) in articles" :key="article.id" v-reveal="{ delay: Math.min(index, 6) * 40 }">

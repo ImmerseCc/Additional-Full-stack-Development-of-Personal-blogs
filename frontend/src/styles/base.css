@@ -227,3 +227,100 @@ samp {
   }
 }
 
+/* ---- 通用控件类（阶段 5 批 2，模块四）----
+   搜索框 / 标签筛选 / 后续的评论表单共用这三个类；此前每个组件各写一份按钮外观，
+   从这里起新组件统一复用。已有组件（分页、重试按钮等）保持原样，不做无谓重构。 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
+.btn:hover {
+  background-color: var(--color-accent-hover);
+}
+
+.btn--ghost {
+  color: var(--color-accent);
+  background-color: transparent;
+  border-color: var(--color-border-strong);
+}
+
+.btn--ghost:hover {
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border-color: transparent;
+}
+
+.input {
+  width: 100%;
+  padding: 9px 12px;
+  color: var(--color-text);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition:
+    border-color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease;
+}
+
+.input::placeholder {
+  color: var(--color-muted);
+}
+
+.input:hover {
+  border-color: var(--color-border-strong);
+}
+
+.input:focus-visible {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+  outline: none;
+}
+
+/* 可切换胶囊按钮：标签筛选与后续多选控件共用；选中态用 aria-pressed 表达，样式跟着走 */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  color: var(--color-accent);
+  background-color: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
+.chip:hover {
+  border-color: var(--color-accent);
+}
+
+.chip[aria-pressed='true'] {
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.chip__count {
+  font-size: 12px;
+  opacity: 0.75;
+}
+

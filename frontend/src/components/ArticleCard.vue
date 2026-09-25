@@ -1,6 +1,7 @@
 <script setup>
-// 文章卡片（阶段 4 批 2）：列表页与首页共用。
-// 整卡可点：标题链接用 ::after 覆盖整卡（点击范围大），标签先渲染为纯文本（标签过滤页属阶段 5）。
+// 文章卡片（阶段 4 批 2 建；阶段 5 批 2 让标签可点）：列表页与首页共用。
+// 整卡可点：标题链接用 ::after 覆盖整卡（点击范围大）；标签链接用 z-index 抬到覆盖层之上，
+// 点标签 = 跳到 /articles?tags=标签名 做过滤（模块四）。
 import { formatDate } from '@/utils/date'
 
 defineProps({
@@ -8,6 +9,7 @@ defineProps({
 })
 
 const detailPath = (article) => `/articles/${article.id}`
+const filterByTag = (tag) => ({ path: '/articles', query: { tags: tag } })
 </script>
 
 <template>
@@ -25,7 +27,11 @@ const detailPath = (article) => `/articles/${article.id}`
       <p v-if="article.summary" class="card__summary">{{ article.summary }}</p>
 
       <ul v-if="article.tags && article.tags.length" class="card__tags">
-        <li v-for="tag in article.tags" :key="tag" class="card__tag">{{ tag }}</li>
+        <li v-for="tag in article.tags" :key="tag">
+          <RouterLink class="card__tag" :to="filterByTag(tag)" :aria-label="`按标签「${tag}」筛选文章`">
+            {{ tag }}
+          </RouterLink>
+        </li>
       </ul>
 
       <div class="card__meta">
@@ -143,12 +149,28 @@ const detailPath = (article) => `/articles/${article.id}`
   list-style: none;
 }
 
+/* 标签链接要浮在标题链接的整卡覆盖层（::after 的 inset:0）之上，否则点不到（阶段 5 批 2） */
 .card__tag {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
   padding: 2px 10px;
   color: var(--color-accent);
   background-color: var(--color-accent-soft);
+  border: 1px solid transparent;
   border-radius: var(--radius-pill);
   font-size: 12px;
+  text-decoration: none;
+  transition:
+    color var(--duration-fast) ease,
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease;
+}
+
+.card__tag:hover {
+  color: var(--color-accent-contrast);
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
 }
 
 .card__meta {
