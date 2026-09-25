@@ -8,17 +8,23 @@
 // 阶段 5 批 3：正文下方挂评论区；评论区自己取数与维护总数，只把总数回传给头部 meta 的「评论 N」。
 // 阶段 5 批 4：正文下方再加点赞按钮（LikeButton），计数同样以后端返回为准并回传给 meta。
 // 阶段 7 批 1：页头下沿挂阅读进度条（ReadingProgress），进度按页面滚动比例计算（滚到底 = 100%）。
-import { computed, nextTick, onMounted, ref } from 'vue'
+// 阶段 7 批 2：Markdown 渲染管线改为**动态加载**（决策 BH），正文渲染期间用骨架兜底。
+import { computed, defineAsyncComponent, nextTick, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import CommentSection from '@/components/CommentSection.vue'
 import LikeButton from '@/components/LikeButton.vue'
-import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import ReadingProgress from '@/components/ReadingProgress.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
 import { fetchArticleDetail } from '@/api/articles'
 import { formatDate } from '@/utils/date'
 import { useScrollSpy } from '@/utils/scrollSpy'
+
+// 决策 BH（阶段 7 批 2）：Markdown 管线（markdown-it + highlight.js + DOMPurify，约 280 kB）
+// 由静态 import 改为动态加载 —— 详情页壳层（标题 / meta / 封面 / 骨架）不再等它下载完，
+// 文章 404 与错误态更是完全不加载；取目录前用它确保正文已经渲染（见 load()）。
+const loadMarkdownRenderer = () => import('@/components/MarkdownRenderer.vue')
+const MarkdownRenderer = defineAsyncComponent(loadMarkdownRenderer)
 
 const route = useRoute()
 
@@ -78,6 +84,9 @@ async function load() {
 
   // 必须先让 loading 置否、正文真正渲染出来，再去取目录；
   // 否则此时模板还停在加载态的骨架分支，bodyRoot 是 null，目录永远为空（批 4 实测踩到）
+  await nextTick()
+  // 正文现在是异步组件（决策 BH）：还要等管线 chunk 到位并完成渲染，否则读到的是骨架
+  await loadMarkdownRenderer()
   await nextTick()
   collectHeadings()
   measure()
@@ -144,7 +153,18 @@ onMounted(load)
           />
 
           <div ref="bodyRoot" v-reveal="{ delay: 120 }" class="detail__body">
-            <MarkdownRenderer :source="article.content" />
+            <Suspense>
+              <MarkdownRenderer :source="article.content" />
+              <template #fallback>
+                <div class="detail-loading" aria-busy="true" aria-label="正文加载中">
+                  <SkeletonBlock height="14px" width="92%" />
+                  <SkeletonBlock height="14px" width="86%" />
+                  <SkeletonBlock height="14px" width="90%" />
+                  <SkeletonBlock height="14px" width="58%" />
+                  <SkeletonBlock height="150px" radius="var(--radius-card)" />
+                </div>
+              </template>
+            </Suspense>
           </div>
 
           <ReadingProgress />

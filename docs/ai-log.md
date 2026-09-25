@@ -698,3 +698,17 @@
 - 验证命令与结果（均为实测输出）：`npm run build` → `✓ 151 modules transformed.` / `✓ built in 249ms`；`npm run smoke` → `全部通过：97/97 项断言`；浏览器 8 项见第 4 点。
 - 遗留问题：本批闭环**遗留 23（阅读进度条 / 回到顶部）**；`prefers-reduced-motion` 下的"瞬时跳转 / 无过渡"仍是**静态证据**（本机无媒体仿真手段，口径同阶段 6）；"进度条不拦截点击"未做动态施压验证。
 - 下一步：**批 2 —— 详情页 B：chunk 拆包**（决策 BH：只把 Markdown 管线改动态 `import` + 骨架兜底，闭环遗留 20 / 27），做完停下等作者确认。
+
+### 阶段 7：功能迭代一（批 2：详情页 B —— Markdown 管线动态加载 / chunk 拆包）
+- 我的提示词摘要："**批 1 通过，请继续**"（作者确认批 1 并授权开始批 2）。
+- AI 做了什么：
+  1. **按决策 BH① 拆包**：`frontend/src/views/ArticleDetailView.vue` 中 `MarkdownRenderer` 由静态 import 改为 `defineAsyncComponent(() => import(...))`，模板里包一层 `<Suspense>`，`#fallback` 复用已有的 `.detail-loading` 骨架（4 行文本骨架 + 1 块大骨架，带 `aria-busy` / `aria-label="正文加载中"`）；**`utils/markdown.js` 与 `MarkdownRenderer.vue` 一字未改，高亮行为保持不变**（BH 的硬约束）；
+  2. **取目录时序**：正文变异步组件后，原来的"`await nextTick()` 后取目录"会读到骨架。`load()` 里补 `await loadMarkdownRenderer()` + `await nextTick()` 再 `collectHeadings()` —— 复用同一个动态 import（模块缓存保证与 `defineAsyncComponent` 的 loader 是同一个 Promise），不必给渲染器加 emit；
+  3. **构建实测（拆包结果）**：`ArticleDetailView` chunk **298.37 kB → 17.62 kB（gzip 111.29 → 6.42 kB）**，管线独立为 `MarkdownRenderer-*.js` **281.34 kB（gzip 104.55 kB）**；`grep` 复核构成：详情 shell chunk 内**已不含** hljs / DOMPurify，渲染器 chunk 内含 markdown-it + highlight.js + DOMPurify（组合正确，不是空壳）；`npm run build` → **231ms**；
+  4. **如实记录一处成本**：共享 chunk `_plugin-vue_export-helper` 由 **63.56 → 70.36 kB**（gzip 24.91 → 27.28 kB，**+2.4 kB gzip**）；`grep` 确认新增的是 `isSuspense` / `ssContent` / `ssFallback` 等标识 —— 即**首次引入 `<Suspense>` 带进来的 Vue 运行时**。该 chunk 全站共用，是本批方案（BH①）的已知代价；若要省掉，可改用 `defineAsyncComponent` 的 `loadingComponent` 写法（需另写一个骨架组件）；
+  5. **浏览器实测 5 项**：① 硬刷新 `/articles/1` → 标题 / meta / 封面正常、**目录 4 项齐全**（异步化后 `collectHeadings()` 仍能取到，这是本批最大的回归风险点，已排除）；② 正文渲染正常、**代码高亮与拆包前一致**（`@SpringBootApplication` / `public class` / `String[]` 着色均可辨）；③ 点目录「技术栈」→ 正确跳转且滚动高亮跟随；④ 进度条 / 评论区 / 点赞不受影响；⑤ `/articles/99999` 的 404 态正常（该分支不渲染正文，按设计也不会触发管线 chunk 的加载）；
+  6. **回归与留档**：`npm run smoke` → **97/97 项断言**；`docs/demo/stage7-04-detail-after-split.png`（拆包后详情页：正文 + 高亮 + 目录 + 进度条同框）归档。
+- 改动文件：修改（**完整**）`frontend/src/views/ArticleDetailView.vue`（import / `load()` / 模板三处）；新增截图 `docs/demo/stage7-04-detail-after-split.png`；文档 `docs/{ai-log,current-state,collaboration-log}.md`。**未新增依赖**，也未改 `utils/markdown.js` / `MarkdownRenderer.vue` / `vite.config.js`（BH 的 ③ `manualChunks` 未启用）。
+- 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 231ms`，`ArticleDetailView-BOJ8CDln.js 17.62 kB │ gzip 6.42 kB`、`MarkdownRenderer-FVb6hk9Q.js 281.34 kB │ gzip 104.55 kB`、`_plugin-vue_export-helper-BCR32NG1.js 70.36 kB`；`npm run smoke` → `全部通过：97/97 项断言`。
+- 遗留问题：**遗留 20 / 27 部分闭环** —— 首屏不再被约 280 kB 的管线阻塞、404 与错误态完全不加载管线；但**详情页完整浏览的总下载量不变**（正文本来就需要管线）。要真正降低总字节数须走 BH 的 ② 号方案（`highlight.js/lib/core` + 按需注册语言）—— **待作者决策**（种子文章实际用到的语言为 sql 4 / json 3 / js 2 / java 1，另有 10 个未标注语言的代码块本来就走"不认识就转义"路径）；**未覆盖项**：管线 chunk 加载失败时的表现未演练（dev 模式会走 Vite 报错覆盖层，与生产行为不一致），如实登记。
+- 下一步：**批 3 —— 列表页：无限滚动 + 骨架屏**（决策 BG：累积加载、`?page` = 已加载页数、滚动时 `replace`；闭环遗留 18），做完停下等作者确认。
