@@ -581,3 +581,18 @@
 - 验证命令与结果（均为实测输出）：见第 1–5 点；关键实测原文 —— `{"code":0,"message":"ok","data":{"status":"UP","time":"2026-09-25T18:13:12"}}`、`✓ 151 modules transformed.`、`✓ built in 241ms`、`Started BlogApplication in 1.544 seconds`。
 - 遗留问题：无新增；批 0 按决策 BC **未重置数据库**，`comment` / `like_record` 均为 0，等价干净基线；`frontend/scripts/smoke.mjs`（决策 AW）待批 1 经作者确认后创建。
 - 下一步：批 1 —— 契约逐条复核（通用约定 + 17 条接口 + 7 个错误码逐条比对实现，产出「契约 ↔ 实现」一致性表写入 `docs/audit-report.md` 的「阶段 6 预审计」章节）。
+
+### 阶段 6：全链路回归 + 异常 / 空态演练 + 契约逐条复核（批 1：契约逐条复核 + 接口回归脚本）
+- 我的提示词摘要："**均同意，请继续**"（作者确认决策 AW 的落地细节：新增 `frontend/scripts/smoke.mjs` 与 `npm run smoke` 脚本名）。
+- AI 做了什么：
+  1. **读实现**：逐行阅读后端 `controller/`（5 个）、`service/`（4 个）、`common/`（`ErrorCode` / `GlobalExceptionHandler` / `PageParams` / `ApiResponse`）与 3 个请求 DTO，逐条对照 `docs/api-contract.md` v1.0；
+  2. **新增接口回归脚本 `frontend/scripts/smoke.mjs`**（Node 原生 `fetch`、**零新增依赖**）：按契约章节分组，覆盖 13 个已实现操作的**正例 + 反例共 97 项断言**；带 `finally` 级联清理，跑完自动复核数据库回到种子状态；`package.json` 增加 `npm run smoke`；
+  3. **实跑 97/97 全通过**（含 `40001` / `40002` / `40004` 全部错误分支、点赞与评论两端幂等、`data` 为 `null`、`authorEmail` / `visitorId` 不回传、分页默认值与越界、`createdAt` 倒序、摘要按码点截取 120 字、`tags: []` 与省略 `tags` 都清空）；
+  4. **一次性验证脚本刻意不覆盖的行为**（避免永久新增标签行）：标签不存在时自动创建（9 个标签，新标签 `articleCount=1`）→ 删除文章后**标签本身保留**（`articleCount` 归 0，符合契约 §四·6）→ 用临时 JDBC 程序清理该孤立标签（`deleted_tags=1`、`remaining_tags=8`）；
+  5. **发现 1 处契约 ↔ 实现偏差**：`40009`（资源冲突）在契约、`ErrorCode`、`OpenApiConfig` 三处都有提及，但**全仓库无任何抛出点**，当前不可达（并发撞 `tag.name` UNIQUE 会以 `50001` 暴露）；
+  6. **写入 `docs/audit-report.md`**：新增「阶段 6 预审计」章节（17 条接口逐条结论 + 通用约定与 7 个错误码复核表 + 发现的问题 + 未覆盖清单 + 2 条需作者验证项 + 脚本说明），并在「历次审计」表登记预审计轮次；
+  7. **文档同步**：`README.md`（前端脚本清单加 `npm run smoke`）、`docs/collaboration-log.md`（阶段索引批 1）、`docs/current-state.md`（快照更新）。
+- 改动文件：新增（**完整**）`frontend/scripts/smoke.mjs`；修改（**完整**）`frontend/package.json`；修改（**完整文档**）`docs/audit-report.md`、`README.md`、`docs/current-state.md`、`docs/collaboration-log.md`、`docs/ai-log.md`；临时校验程序 `backend/target/tmp-check/CleanupTag.java`（gitignore 内，不提交）。
+- 验证命令与结果（均为实测输出）：`npm run smoke` → **`全部通过：97/97 项断言`**；数据库独立复核（临时 JDBC 直读）→ `article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0`；接口侧复核 `tags=8`、关联合计 `23`、`articles(ALL)=12` —— **测试数据全部还原**。
+- 遗留问题：**遗留 16 部分闭环**（接口层回归已可重复运行；浏览器层仍人工）；新增待办：是否启用 / 标注 `40009`（建议阶段 8 处理，已登记在审计报告与 `current-state.md`）。
+- 下一步：批 2 —— 正常路径全链路回归（六模块串联：导航 / 主题 → 列表分页 + 深链 → 搜索 + 标签过滤 → 详情 + Markdown + 目录 → 评论 → 点赞 + Toast → 本地数据面板 + 一键重置）。

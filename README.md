@@ -62,7 +62,7 @@ npm install
 npm run dev
 ```
 
-其它脚本：`npm run build`（生产构建）、`npm run preview`（预览构建产物）。
+其它脚本：`npm run build`（生产构建）、`npm run preview`（预览构建产物）、`npm run smoke`（接口层回归，需后端已启动；脚本与用例说明见 `frontend/scripts/smoke.mjs` 与 `docs/audit-report.md`）。
 
 ### 访问地址
 
