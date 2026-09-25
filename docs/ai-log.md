@@ -612,3 +612,18 @@
 - 验证命令与结果（均为实测输出）：浏览器实测见上；接口侧独立复核 `articles=12 / like 合计=0 / comment 合计=0 / tags=8 / 关联合计=23` —— **测试数据全部还原**；`npm run build` 未重跑（业务代码未变）。
 - 遗留问题：**遗留 24（Toast 视觉截图未留档）闭环**（`docs/demo/stage6-06-about-localdata-toast.png` 含「本地数据已重置（清理 5 项）」Toast；异常 Toast 仍未单独截图）；**遗留 26 复现 2 次**（合成点击未送达，键盘路径可用）；新增观察项 1 条（「评论已发表」提示在删除后仍显示）。
 - 下一步：批 3 —— 异常 / 边界 / 空态演练（6 类错误码逐条触发、后端停服降级、输入边界、XSS / SQL 注入样本、URL 篡改与未知路由）。
+
+### 阶段 6：全链路回归 + 异常 / 空态演练 + 契约逐条复核（批 3：异常 / 边界 / 空态演练）
+- 我的提示词摘要："**遗留28阶段 8 处理，批2通过，请继续**" —— 作者拍板：`40009` 留到阶段 8 做标签管理接口时启用（**决策 BE**）；批 2 验收通过；继续批 3。
+- AI 做了什么（**接口层 + 浏览器层 + 停服演练三层实测**）：
+  1. **XSS 载荷（标题 / 正文 / 标签 / 评论四处）**：新建演练文章（标题 `<script>alert('title')</script>…`、正文含 `<script>` / `<img src=x onerror=…>` / `[链接](javascript:…)` / `<iframe>`、标签 `<b>xss</b>`），浏览器打开后**四类载荷全部以纯文本呈现**：`<script>` 与 `<img onerror>` 未执行（无任何弹窗、页面功能正常）、`javascript:` 链接**未渲染成链接**（markdown-it 校验 + DOMPurify 两层）、`<iframe>` 未创建；标签名与 `document.title` 同样只是文本。评论里写入同一类载荷 → 列表按纯文本显示、无执行。演练数据（文章 + 评论）当场清理；
+  2. **SQL 注入与通配符**：`keyword=' OR 1=1 --`、`UNION SELECT`、`%`、`_` 四种输入 → 一律 HTTP 200 / `code=0` / `total=0`，**无 500、无全表穿透**；核对实现确认 `ArticleRepository` 用 `LIKE ? ESCAPE '\'` + `escapeLike()` 显式转义 `%` `_` `\`，且全部查询为参数化占位符 —— **注入与通配符双安全**；
+  3. **`40009` 的当前表现**（批 1 遗留 28 的现场复核）：同一文章挂两个同名标签不报冲突（find-or-create + 去重），确认该码**当前不可达**，与批 1 结论一致；
+  4. **输入与 URL 边界**：`/articles/abc` → 专门错误态「文章 ID 不合法：abc」+ 重试 / 返回；`/articles/99999` 与 `/articles/0`、`/articles/-1` → 详情 404「文章不存在」；`/no-such-page` → 404 页（标题同步为「页面不存在 · 个人博客」）；`?tags=不存在的标签` → 空态「筛选出 0 篇文章」+ 清除筛选；`?page=-1&size=999` → **前端静默归一**（`page` 非正整数回第 1 页、`size` 由前端常量固定不上送），因此非法分页不会打到后端；接口层 `page=-1` / `size=21` 仍严格返回 `40002`（批 1 已覆盖）；
+  5. **后端停服降级演练（按标准流程 `taskkill` 停 8080，事后已恢复）**：直连 8080 → 000、经 Vite 代理 → 502、前端静态页 → 200；**列表页**与**详情页**均降级为整页错误态「无法连接后端服务（HTTP 502），请确认后端已在 http://localhost:8080 运行」+ 重试按钮；**评论提交** → 表单内行内红字错误且内容保留、未写入；**点赞** → 右下角 **Toast** 同文案、按钮状态未被误改；**`/about` 本地数据面板完全可用**（不依赖后端）；后端重启（约 4 秒就绪）后列表与详情恢复正常；
+  6. **截图归档**：5 张新增证据存入 `docs/demo/`（404 页、列表错误态、详情错误态、停服点赞 Toast、XSS 纯文本）；
+  7. **演练数据清理**：XSS 文章删除后**两个自动创建的标签按契约保留**（`articleCount` 归 0）→ 用临时 JDBC 程序删除孤立标签（`deleted_tags=2`、`remaining_tags=8`）；最终复核 `article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0`。
+- 改动文件：新增（**完整**）`docs/demo/stage6-07-404-page.png`、`stage6-08-error-list.png`、`stage6-09-error-detail.png`、`stage6-10-error-toast.png`、`stage6-11-xss-as-text.png`；修改（**完整文档**）`docs/ai-log.md`、`docs/current-state.md`、`docs/collaboration-log.md`、`docs/debug-log.md`、`docs/audit-report.md`；临时程序 `backend/target/tmp-check/CleanupOrphanTags.java`（gitignore 内，不提交）。**业务代码零改动**。
+- 验证命令与结果（均为实测输出）：见上 5 点；停服期间 `curl` 验证 `直连=000 / 代理=502 / 前端=200`；恢复后 `代理=200`、列表渲染「共 12 篇文章」。
+- 遗留问题：**新增 1 条观察项**（前端派生 node 进程最终也会退出，需重启 dev server，非项目缺陷）；**备注**：`50000` / `50001` 仍未构造触发条件（本批亦未做，如实记录）。
+- 下一步：批 4 —— 非功能与体验复核（响应式多视口、三态主题与暗色对比度、键盘可达性、`prefers-reduced-motion`、控制台零报错、构建体积），并按**决策 AX** 落地前端全局错误兜底（`app.config.errorHandler` + `unhandledrejection` → Toast）。
