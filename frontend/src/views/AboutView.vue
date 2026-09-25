@@ -32,7 +32,7 @@ import LocalDataPanel from '@/components/LocalDataPanel.vue'
       <h2 id="about-data">数据放在哪</h2>
       <p>
         文章、评论与点赞计数的事实来源都在后端，存在服务端的 SQLite 单文件里；浏览器这边只保留「本机偏好」与「本机状态」：
-        主题选择、访客标识（<code>visitorId</code>）、你点过赞的文章、你发过的评论，以及评论表单里记下的昵称。
+        主题选择、访客标识（<code>visitorId</code>）、你点过赞的文章、你发过的评论，以及第一次评论时填下的昵称与邮箱。
       </p>
       <p>
         所以清空浏览器本地数据不会删掉任何文章或评论，只会让你「换一个人」：之前点过的赞仍计入总数，

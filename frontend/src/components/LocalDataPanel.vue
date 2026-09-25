@@ -14,6 +14,8 @@ import { useToastStore } from '@/stores/toast'
 import { VISITOR_STORAGE_KEY } from '@/utils/visitor'
 
 const AUTHOR_STORAGE_KEY = 'commentAuthor'
+// 阶段 7 批 8：首次评论弹窗里填的邮箱也记在本机（仅本地保存，服务端只存不返）
+const EMAIL_STORAGE_KEY = 'commentEmail'
 
 const theme = useThemeStore()
 const likes = useLikesStore()
@@ -27,7 +29,8 @@ function buildSnapshot() {
   return {
     keys: listKeys(),
     visitorId: readRaw(VISITOR_STORAGE_KEY),
-    authorName: readRaw(AUTHOR_STORAGE_KEY) || ''
+    authorName: readRaw(AUTHOR_STORAGE_KEY) || '',
+    authorEmail: readRaw(EMAIL_STORAGE_KEY) || ''
   }
 }
 
@@ -41,7 +44,8 @@ const rows = computed(() => [
   { label: '访客标识', value: maskVisitorId(snapshot.value.visitorId), key: 'visitorId' },
   { label: '已点赞文章', value: `${likes.count} 篇`, key: 'likedArticles' },
   { label: '我发过的评论', value: `${myComments.count} 条`, key: 'myComments' },
-  { label: '评论昵称记忆', value: snapshot.value.authorName || '未记录', key: 'commentAuthor' }
+  { label: '评论昵称记忆', value: snapshot.value.authorName || '未记录', key: 'commentAuthor' },
+  { label: '评论邮箱记忆', value: snapshot.value.authorEmail || '未记录', key: 'commentEmail' }
 ])
 
 const keyList = computed(() => (snapshot.value.keys.length ? snapshot.value.keys.join('、') : '（无）'))
