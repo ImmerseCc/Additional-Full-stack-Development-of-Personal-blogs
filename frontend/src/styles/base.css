@@ -202,3 +202,28 @@ samp {
   --hl-meta: #8b949e;
 }
 
+/* ---- 滚动进场动画（阶段 4 批 4，决策 Z）----
+   类名由全局指令 v-reveal 添加（见 src/utils/reveal.js）；这里只定义"隐藏态 → 显现态"。
+   指令在 prefers-reduced-motion 下不会添加 .reveal，这里的兜底规则保证即使加了也直接可见。 */
+.reveal {
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity var(--duration-slow) var(--ease-out),
+    transform var(--duration-slow) var(--ease-out);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal.is-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal.is-revealed {
+    opacity: 1;
+    transform: none;
+  }
+}
+

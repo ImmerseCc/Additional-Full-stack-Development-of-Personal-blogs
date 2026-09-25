@@ -432,3 +432,29 @@
   - 收尾：删除临时自测页（`dist/` 确认无残留）、停服 + 清理派生进程、复查 `5173/8080 均已释放`
 - 遗留问题：本批已提交入库（`44b0d46`，9 文件，+607/−101；提交后回归构建 119 模块 / 212ms）；详情页无上一篇 / 下一篇（决策 U，阶段 8 实现 `adjacent` 接口时一并渲染，遗留项 19）；详情页 chunk 283.79 kB（预期取舍，遗留项 20）；骨架屏出现时机仍无法真机抓拍（遗留项 18）；前端仍无自动化回归（遗留项 16）。
 - 下一步：阶段 4 批 4 —— 加分项：`TableOfContents.vue`（桌面右侧固定栏、窄屏隐藏，决策 Y；当前小节高亮用 `scroll` + `getBoundingClientRect`）+ IntersectionObserver 进场动画（复用逻辑放 `src/utils/`，决策 Z）+ Markdown 图片懒加载（`renderMarkdown` 的 `image` 规则加 `loading="lazy"`，或渲染后统一处理）。
+
+### 阶段 4：前端模块二 / 三（批 4：加分项 —— 目录 + 滚动高亮 + 进场动画 + 图片懒加载）
+- 我的提示词摘要："**请继续**"——执行批 4（阶段 4 最后一批实现）：文章目录、当前小节高亮、IntersectionObserver 进场动画、Markdown 图片懒加载。
+- AI 做了什么：
+  1. **新建 `src/utils/reveal.js`**（决策 Z/AF）：全局指令 `v-reveal`，用 IntersectionObserver 做一次性显现；`main.js` 注册；`base.css` 加 `.reveal` / `.is-revealed` 两态 + reduced-motion 兜底；
+  2. **新建 `src/utils/scrollSpy.js`**（决策 Z）：`useScrollSpy(getHeadings, { offset })` → `{ activeId, measure }`，用 `scroll` + `getBoundingClientRect` 判断"最后一个越过页头线的小节"，并在滚到底部时兜底高亮最后一节；滚动事件只登记一帧、计算放进 `requestAnimationFrame`；
+  3. **新建 `src/components/TableOfContents.vue`**（决策 Y）：目录项来自真实渲染的 `h2/h3`（决策 AG），点击用 `scrollIntoView` 平滑跳转（reduced-motion 下直接跳），带 `aria-current="location"`；
+  4. **`src/utils/markdown.js`**：新增 `image` 渲染规则，给正文图片加 `loading="lazy"` + `decoding="async"`，并把这两个属性加进 DOMPurify 白名单（实测未被剥掉）；
+  5. **`src/components/ArticleList.vue`**：`<li>` 加 `v-reveal="{ delay: Math.min(index, 6) * 40 }"`，列表卡片错落进场；
+  6. **`src/views/ArticleDetailView.vue`**：改为两栏布局（正文 + 右侧目录，≥1024px 才显示目录），接入 `useScrollSpy`，封面 / 正文 / 返回链接加 `v-reveal`；
+  7. **验证**：`npm run build` → **123 模块 / 169ms**（主包 108.32 kB、详情 chunk 286.22 kB）；临时页断言图片懒加载属性 + 指令行为；真实页面 6 项浏览器实测（目录、滚动高亮、点击跳转、窄屏隐藏、列表卡片可见性、下方卡片滚入显现）。
+- **本批自查出并修复 2 个真实缺陷**（详见 `docs/debug-log.md` 报错记录 8）：
+  1. **`v-reveal` 把首屏内容永久藏在 `opacity: 0`**：初版把"内容可见性"挂在 IntersectionObserver 回调上，而后台标签页/未渲染场景下首次投递会被大幅推迟（临时页实测 4 秒以上仍是 `opacity=0`），表现为"详情页除了标题全是空白"。修复：**视口内的元素挂载后立即显现**（20ms `setTimeout`，不用 rAF），只有视口外元素才等观察器；
+  2. **详情页目录永远为空**：`collectHeadings()` 在 `loading` 仍为 `true`、模板还停在骨架分支时执行，此时 `bodyRoot` 是 `null`，取到空数组后再无机会重取。修复：把"`nextTick` → 取目录 → 测高亮"挪到 `finally` 之后；并在错误分支清空 `headings`。
+  两条经验已写进 `current-state.md` 的接手说明：**动画不能成为内容可见性的前提**、**取渲染结果必须等目标分支真正挂载**。
+- 改动文件：
+  - 新建（**完整**）：`frontend/src/components/TableOfContents.vue`、`frontend/src/utils/reveal.js`、`frontend/src/utils/scrollSpy.js`
+  - 修改（**完整**）：`frontend/src/main.js`（注册指令）、`frontend/src/styles/base.css`（`.reveal` 两态 + reduced-motion 兜底）、`frontend/src/utils/markdown.js`（图片懒加载规则 + 白名单）、`frontend/src/components/ArticleList.vue`（卡片错落进场）、`frontend/src/views/ArticleDetailView.vue`（两栏 + 目录 + 滚动高亮 + 进场 + 修缺陷 B）
+  - 文档：`docs/current-state.md`（整份覆盖）、`docs/debug-log.md`（报错记录 8）、`docs/ai-log.md`（本条目）、`docs/collaboration-log.md`（最后更新行）
+- 验证命令与结果（均为实测输出）：
+  - `npm run build` → `✓ 123 modules transformed` / `✓ built in 169ms`（收尾复跑 203ms）
+  - 临时页断言（验证后删除）：markdown 图片带 `loading="lazy"` + `decoding="async"` 且 `src` / `alt` 保留；指令挂载后立即带 `.reveal`；视口外元素滚入后 `revealed=true / opacity=1`
+  - 真实页面（1280×800 与 375×667）：① 目录列出 4 项；② 滚动时高亮跟随（顶部第 1 项 → 页尾最后一节）；③ 点目录项精确跳转且高亮同步；④ 375px 目录整块隐藏、正文单列；⑤ 列表 12 张卡片全部可见（修复前是空白）；⑥ 下方卡片滚入视口后正常显现
+  - 收尾：删除临时页（`dist/` 无残留）、停服 + 清理派生进程、复查 `5173/8080 均已释放`
+- 遗留问题：本批改动**尚未 git 提交**（等作者"批 4 通过"）；Markdown 正文图片懒加载**没有真实内容可验证**（12 篇种子文章都不含图片，只能用构造样例断言，遗留项 21）；目录窄屏无折叠入口（决策 Y 的取舍，遗留项 22）；详情页 chunk 286 kB（预期取舍，遗留项 20）；骨架屏出现时机仍无法抓拍（遗留项 18）。
+- 下一步：阶段 4 批 5（收尾）—— `npm run build` 终测 + 浏览器逐项实拍（首页 / 列表 / 翻页 / 详情 / 目录 / 404 / 错误态 / 三态主题 / 375px）+ 更新 `README.md` 的功能清单与加分项状态 + `current-state.md` 整份覆盖 + `collaboration-log.md` 补阶段 4 阶段记录 + 提交。

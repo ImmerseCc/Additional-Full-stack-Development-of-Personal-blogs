@@ -217,7 +217,7 @@ npm run dev
 | `docs/data-model.md` | 数据库表结构、字段、约束 | 已创建（**v1.0 已确认**） |
 | `docs/collaboration-log.md` | 关键提示词汇总 + 阶段索引 | 已创建 |
 | `docs/ai-log.md` | 逐轮追加的 AI 协作流水日志 | 已创建 |
-| `docs/debug-log.md` | 真实报错与修复记录 | 已创建（7 条真实报错 + 9 条观察项） |
+| `docs/debug-log.md` | 真实报错与修复记录 | 已创建（8 条真实报错 + 9 条观察项） |
 | `docs/audit-report.md` | 前后端专项审计记录 | 已创建（模板 + 12 项检查清单，审计待阶段 9） |
 | `docs/demo/` | 演示截图 / 录屏存放目录 | 已创建（含 `.gitkeep`） |
 

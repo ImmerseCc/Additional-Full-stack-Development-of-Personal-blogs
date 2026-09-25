@@ -34,7 +34,7 @@ const emit = defineEmits(['retry'])
     <p v-else-if="articles.length === 0" class="article-list__state">{{ emptyText }}</p>
 
     <ul v-else class="article-list__grid">
-      <li v-for="article in articles" :key="article.id">
+      <li v-for="(article, index) in articles" :key="article.id" v-reveal="{ delay: Math.min(index, 6) * 40 }">
         <ArticleCard :article="article" />
       </li>
     </ul>

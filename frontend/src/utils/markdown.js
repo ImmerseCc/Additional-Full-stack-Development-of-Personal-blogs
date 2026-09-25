@@ -68,10 +68,21 @@ md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
   return defaultLinkOpen(tokens, idx, options, env, self)
 }
 
-// id 供目录跳转，class 是代码高亮所需；style 与被禁标签属于白名单外
+// 正文图片懒加载（阶段 4 批 4）：交给浏览器原生 loading="lazy"，不额外写 IntersectionObserver
+const defaultImage =
+  md.renderer.rules.image ||
+  ((tokens, idx, options, env, self) => self.renderToken(tokens, idx, options))
+
+md.renderer.rules.image = (tokens, idx, options, env, self) => {
+  tokens[idx].attrSet('loading', 'lazy')
+  tokens[idx].attrSet('decoding', 'async')
+  return defaultImage(tokens, idx, options, env, self)
+}
+
+// id 供目录跳转，class 是代码高亮所需，loading / decoding 是图片懒加载所需；style 与被禁标签属于白名单外
 const SANITIZE_OPTIONS = {
   USE_PROFILES: { html: true },
-  ADD_ATTR: ['id', 'target', 'rel', 'class'],
+  ADD_ATTR: ['id', 'target', 'rel', 'class', 'loading', 'decoding'],
   FORBID_TAGS: ['style', 'iframe', 'form', 'input', 'button', 'script'],
   FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick']
 }
