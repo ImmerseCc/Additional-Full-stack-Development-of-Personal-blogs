@@ -684,3 +684,17 @@
 - 验证命令与结果（均为实测输出）：见第 2–5 点；关键原文 —— `Started BlogApplication in 1.701 seconds`、`VITE v8.3.0  ready in 349 ms`、`✓ 151 modules transformed.` / `✓ built in 252ms`、`全部通过：97/97 项断言`、`COUNT article = 12` … `COUNT like_record = 0`。**注**：临时直连会话查到的 `PRAGMA busy_timeout = 3000` 是该连接自身的默认值，应用连接由 JDBC URL 设定 5000（`backend/src/main/resources/application.yml:11`），**非回归**。
 - 遗留问题：阶段 7 计划闭环 18（骨架屏时机抓拍，批 3）、20 / 27（详情页拆包，批 2）、22（窄屏目录入口，批 4）、23（进度条 + 回到顶部，批 1）、29 / 30（批 5）；其余（8 / 9 / 16 / 19 / 25 / 26 等）按原计划留在阶段 8 / 阶段 9 或作为演示级语义保留。
 - 下一步：**批 1 —— 详情页 A：阅读进度条 + 回到顶部**（新增 `frontend/src/components/ReadingProgress.vue`、`frontend/src/components/BackToTop.vue`；修改 `frontend/src/views/ArticleDetailView.vue`、`frontend/src/App.vue`、`frontend/src/styles/base.css`），做完停下等作者确认。
+
+### 阶段 7：功能迭代一（批 1：详情页 A —— 阅读进度条 + 回到顶部）
+- 我的提示词摘要："**批 0 通过，请继续**"（作者确认批 0 并授权开始批 1）。
+- AI 做了什么：
+  1. **新增两个组件**（均为完整文件）：`frontend/src/components/ReadingProgress.vue`（页头下沿 2px 细条，`role="progressbar"` + `aria-label="阅读进度"`）与 `frontend/src/components/BackToTop.vue`（右下角圆形按钮，`aria-label="回到顶部"`）；两者都 **Teleport 到 body**（与 ToastStack 同因：路由过渡的 transform 与页头 `backdrop-filter` 会建立包含块 / 层叠上下文）；滚动监听沿用 `utils/scrollSpy.js` 的"事件里只登记一帧 + rAF 计算"范式，监听 `scroll`（passive）与 `resize`，卸载时全部清理；
+  2. **接入**：`frontend/src/App.vue` 全局挂 `BackToTop`（决策 BI：全站可用，滚动超过 1.5 屏出现，reduced-motion 下 `scrollTo({ behavior: 'auto' })` 瞬时跳转）；`frontend/src/views/ArticleDetailView.vue` 在正文之后挂 `ReadingProgress`（只在文章态存在，加载 / 404 / 错误态不显示）；两处文件头注释同步；
+  3. **实测中自查并修正 1 处口径问题（重要）**：初版进度以"正文元素"为准（正文顶部滚到页头线 = 0%，正文底部进入视口底部 = 100%）。实测发现**第 1 篇正文字高（约 770px）小于视口（720px）**时，公式分母只剩约 114px —— 进度条会在极短滚动内从 0 跳到 100% 并一直满格，观感像故障。改为**页面滚动比例**（`scrollY / (scrollHeight - innerHeight)`）：滚到页面底部才是 100%，短文 / 长文都能全程平滑。同时删掉不再需要的 `target` prop 与 watcher，理由写进组件头注释，过程记入 `docs/debug-log.md` 观察项；
+  4. **浏览器实测 8 项（真实浏览器，非模拟）**：① 顶部 0%（条不可见，符合"0% 即 0 宽度"）；② 滚动 700px（该页总可滚约 1250px）→ 条宽约 **58%**，位置紧贴页头下沿（`top: var(--header-height)`，与页头 1px 下边框对齐、无缝隙）；③ 页头下沿裁剪图确认为 2px 实心细条（`pointer-events: none` 由代码保证，未做点击穿透施压）；④ 页面底部 → **100% 满格**；⑤ 无障碍树可读到 `progressbar / 阅读进度`（元素快照 1 条）；⑥ 回到顶部按钮：顶部与 700px 处**不出现**（阈值 1.5 屏 = 1080px）、底部**出现**；⑦ **键盘路径**（元素快照取 ref → `press_key` + `Enter`，规避已知"合成点击偶发不送达"）→ 平滑回顶，按钮随即消失、进度条归零；⑧ 暗色主题下进度条用暗色主色 `#6f9bff`、按钮为暗色样式，均清晰可辨；
+  5. **回归**：`/articles` 列表页 document 级元素快照 **0 个 progressbar**（进度条只在详情页），同一页面的回到顶部按钮/滚动行为正常（符合"全站挂载"的决策 BI）；`npm run build` → **151 模块 / `✓ built in 249ms`**（`index 55.56 kB`，较批 0 基线 54.53 kB **+1.03 kB**；详情 chunk **298.37 kB**，较基线 297.51 kB **+0.86 kB**）；`npm run smoke` → **97/97 项断言**；取证时曾切到暗色主题，实测后已**恢复为进入时的「亮色」**；
+  6. **截图归档**：`docs/demo/stage7-01-reading-progress-mid.png`（亮色中间态 58%）、`stage7-02-bottom-back-to-top.png`（底部 100% + 回到顶部按钮）、`stage7-03-dark-back-to-top.png`（暗色）。
+- 改动文件：新增（**完整**）`frontend/src/components/ReadingProgress.vue`、`frontend/src/components/BackToTop.vue`；修改（**完整**）`frontend/src/App.vue`、`frontend/src/views/ArticleDetailView.vue`；新增截图 `docs/demo/stage7-01…03-*.png`；文档 `docs/{ai-log,current-state,collaboration-log}.md`。**`frontend/src/styles/base.css` 最终未改**（批次计划里列了它，实际样式全部落在组件 scoped 内并复用现有令牌，属计划内文件的缩减而非新增）；**未新增依赖**。
+- 验证命令与结果（均为实测输出）：`npm run build` → `✓ 151 modules transformed.` / `✓ built in 249ms`；`npm run smoke` → `全部通过：97/97 项断言`；浏览器 8 项见第 4 点。
+- 遗留问题：本批闭环**遗留 23（阅读进度条 / 回到顶部）**；`prefers-reduced-motion` 下的"瞬时跳转 / 无过渡"仍是**静态证据**（本机无媒体仿真手段，口径同阶段 6）；"进度条不拦截点击"未做动态施压验证。
+- 下一步：**批 2 —— 详情页 B：chunk 拆包**（决策 BH：只把 Markdown 管线改动态 `import` + 骨架兜底，闭环遗留 20 / 27），做完停下等作者确认。

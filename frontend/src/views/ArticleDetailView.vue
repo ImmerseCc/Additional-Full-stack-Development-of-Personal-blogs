@@ -7,11 +7,13 @@
 //             当前小节高亮由 utils/scrollSpy.js 的 scroll + getBoundingClientRect 计算。
 // 阶段 5 批 3：正文下方挂评论区；评论区自己取数与维护总数，只把总数回传给头部 meta 的「评论 N」。
 // 阶段 5 批 4：正文下方再加点赞按钮（LikeButton），计数同样以后端返回为准并回传给 meta。
+// 阶段 7 批 1：页头下沿挂阅读进度条（ReadingProgress），进度按页面滚动比例计算（滚到底 = 100%）。
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import CommentSection from '@/components/CommentSection.vue'
 import LikeButton from '@/components/LikeButton.vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
+import ReadingProgress from '@/components/ReadingProgress.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
 import { fetchArticleDetail } from '@/api/articles'
@@ -144,6 +146,8 @@ onMounted(load)
           <div ref="bodyRoot" v-reveal="{ delay: 120 }" class="detail__body">
             <MarkdownRenderer :source="article.content" />
           </div>
+
+          <ReadingProgress />
 
           <div v-reveal class="detail__actions">
             <LikeButton
