@@ -567,3 +567,17 @@
 - 验证命令与结果（均为实测输出）：见第 1 点；服务器与端口状态以作者启动为准（AI 侧验证后已停服并释放 5173 / 8080）。
 - 遗留问题：见 `docs/current-state.md` 第五节。
 - 下一步：作者人工验收 → 若有问题按"报错先记录再修复"流程处理；验收通过后进入**阶段 6**（建议定位为"全链路回归 + 异常 / 空态演练 + 契约逐条复核"，仍待作者拍板）。
+
+### 阶段 6：全链路回归 + 异常 / 空态演练 + 契约逐条复核（批 0：开工基线）
+- 我的提示词摘要：新会话开场要求"**先不要写代码**"（只读 6 份文件 + 用不超过 10 行总结现状）；随后"**请继续，分批列出需要的事项**"；对本轮给出的阶段 6 定位建议、6 批方案与 **10 个决策点（AU–BD）** 回复"**均同意，请继续**"。
+- AI 做了什么：
+  1. **只读开工探测**（未改任何文件）：`git log` / `git status`（分支 `main`、工作区干净、最新提交 `3852fca`）、`netstat` 确认 5173 / 8080 均空闲、确认 `backend/data/blog.db`（77,824 字节，无 `-wal` / `-shm`）与 `frontend/{node_modules,dist}` 存在；
+  2. **更正 1 处文档计数不准**：原记"6 张表 + 7 个索引"，实测为 **6 张表（5 张业务表 + `sqlite_sequence`）＋ 8 个索引（5 个显式 `idx_*` + 3 个 SQLite 自动索引）**，已按实测改写 `docs/current-state.md` 第六节；
+  3. **两端启动基线**：后端 `./mvnw -B -ntp spring-boot:run` → `Started BlogApplication in 1.544 seconds`（Java 26.0.2.1 / Spring Boot v4.1.1 / Spring v7.0.9 / Tomcat 11.0.24，HikariPool-1 正常启动；仅 sqlite-jdbc 的 native-access 警告，属已知且不影响功能）；前端 `npm run dev` → `VITE v8.3.0 ready in 211 ms`、`Local: http://127.0.0.1:5173/`；
+  4. **联通与构建基线**：`curl http://localhost:5173/` → `<title>个人博客 · VibeCoding</title>`；`/api/health` 与 `/api/articles?size=2` 经 **Vite 代理**均返回 200；`npm run build` → **151 模块 / ✓ built in 241ms**，各 chunk 体积（`index 54.22 kB`、详情 `297.51 kB`、`AboutView 4.90 kB`、`ArticlesView 8.80 kB`、`index css 10.18 kB`、`ArticleDetailView css 11.85 kB`）与阶段 5 收尾完全一致 —— **无体积回归**；
+  5. **数据库只读复核**（临时 JDBC 程序，置于 `backend/target/tmp-check/`，`target/` 已 gitignore、不随仓库提交）：`article=12`、`tag=8`、`article_tag=23`、`comment=0`、`like_record=0`、封面命中 12/12、正文配图命中 1、`journal_mode=delete`（未启 WAL，与遗留 9 一致）；
+  6. **文档同步**：`README.md`（顶部状态块与文档索引）、`docs/collaboration-log.md`（阶段索引 + 本轮记录）、`docs/current-state.md`（快照更新：阶段 6 进行中 + 决策 AU–BD + 实测基线）。
+- 改动文件：`README.md`、`docs/current-state.md`、`docs/collaboration-log.md`、`docs/ai-log.md`（**均为完整文档**，无占位）；临时校验程序 `backend/target/tmp-check/{DbCheck,DbList,DbListAll}.java`（gitignore 内，仅本地使用）。
+- 验证命令与结果（均为实测输出）：见第 1–5 点；关键实测原文 —— `{"code":0,"message":"ok","data":{"status":"UP","time":"2026-09-25T18:13:12"}}`、`✓ 151 modules transformed.`、`✓ built in 241ms`、`Started BlogApplication in 1.544 seconds`。
+- 遗留问题：无新增；批 0 按决策 BC **未重置数据库**，`comment` / `like_record` 均为 0，等价干净基线；`frontend/scripts/smoke.mjs`（决策 AW）待批 1 经作者确认后创建。
+- 下一步：批 1 —— 契约逐条复核（通用约定 + 17 条接口 + 7 个错误码逐条比对实现，产出「契约 ↔ 实现」一致性表写入 `docs/audit-report.md` 的「阶段 6 预审计」章节）。

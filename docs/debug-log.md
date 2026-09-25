@@ -279,7 +279,7 @@
 |---|---|---|
 | Git 换行符提示 | `git add` 提示 `warning: LF will be replaced by CRLF ...` | **已处理**：新增 `.gitattributes`（`* text=auto eol=lf`；`.cmd/.bat/.ps1` 用 CRLF；`mvnw`/`*.sh` 用 LF） |
 | 项目路径含空格 | 工作目录为 `D:\code\Additional Full-stack Development of Personal blogs` | 未处理；目前未出现异常 |
-| 终端中文乱码 | AI 侧 Git Bash 输出中文提示时出现乱码（如"关闭后请求"变成了乱码） | 未处理；控制台代码页问题，不是项目问题 |
+| 终端中文乱码 | AI 侧 Git Bash 输出中文提示时出现乱码（如"关闭后请求"变成了乱码） | 未处理；控制台代码页问题，不是项目问题。**阶段 6 批 0 复现**：用临时 Java 程序只读复核数据库时，中文标签同样打印为乱码（数值正常）→ 只读数值型结果，或给 `java` 追加 `-Dstdout.encoding=UTF-8` |
 | IPv6 地址不再可用 | 修复后 `http://[::1]:5173` 返回 000（预期） | 无需处理；用 `localhost` 或 `127.0.0.1` 均可 |
 | Git Bash 的 `wc -m` 按**字节**计数 | locale 自检：`printf '%s' '中文测试' \| wc -m` 输出 12（字节）而不是 4（字符） | 已绕开：中文长度校验改为按**码点**核对的临时程序（阶段 2 批 2b 实测"摘要截取 120 字"时使用，验证后已删除） |
 | 后台任务有 10 分钟上限，超时只杀包装进程 | 供作者验证 Swagger UI 而启动的后端后台任务在 600 秒后超时被终止，但派生 JVM（PID 24680）**继续存活并正常服务**（`/api/health` 与 `/swagger-ui/index.html` 均 200） | 无需处理；再次印证遗留项 10。后续要给作者长时间演示，应让后端跑在**作者自己的终端**里（或让 AI 用不设超时的方式启动），停服务时按 PID `taskkill` |
