@@ -2,7 +2,7 @@
 
 > **与 `docs/ai-log.md` 的关系**：`ai-log.md` 是逐轮流水日志（唯一真相来源）；本文件是**成品视图**——把关键提示词汇总成可直接用于交付/答辩的表格，并给出阶段索引、报错/审计索引与阶段记录。
 > 两处的"关键提示词汇总"表保持同步；如出现不一致，**以 `docs/ai-log.md` 为准**。
-> 最后更新：阶段 0–3 均已全部完成并入库（阶段 3 的点按路径与过渡观感已由作者验收）；**阶段 4「前端模块二 / 三：文章列表与文章详情」批 0–批 3 已入库（`ec848f3`、`b6f7701`、`af913f0`、`44b0d46`），批 4（加分项：目录 + 滚动高亮 + 进场动画 + 图片懒加载）已完成且 6 项浏览器实测通过、改动尚未提交**，下一步批 5（阶段 4 收尾）。
+> 最后更新：阶段 0–4 均已全部完成并入库（阶段 3 的点按路径与过渡观感已由作者验收）；**阶段 4「前端模块二 / 三：文章列表与文章详情」（批 0–批 5）已完成并提交**，下一步阶段 5（前端模块四 / 五 / 六：搜索与分类过滤、评论与点赞、本地持久化）。
 
 ---
 
@@ -30,7 +30,7 @@
 | 1 | 目录结构与占位文件 | **已完成**：批 1 ✅ ／ 批 2 ✅ ／ 批 3 ✅ ／ 批 4 ✅（作者全部确认通过） | 本文件 → 五、阶段记录；`ai-log.md` → 阶段 1 |
 | 2 | 后端业务实现（6 项基础 API + 统一返回 + Swagger） | **已完成**：批 0 ✅ ／批 1 ✅ ／批 2a ✅ ／批 2b ✅ ／批 3 ✅ ／批 4 ✅（待作者确认） | 本文件 → 五、阶段记录；`ai-log.md` → 阶段 2 |
 | 3 | 前端搭建（模块一：导航与主题） | **已完成**：批 0 ✅ ／ 批 1 ✅ ／ 批 2 ✅ ／ 批 3 ✅ ／ 批 4 ✅（**作者已确认**） | 本文件 → 五、阶段记录；`ai-log.md` → 阶段 3 |
-| 4 | 前端模块二 / 三（列表、详情、Markdown、TOC） | **进行中**：批 0 ✅（开工基线：`frontend/public/` 封面与 favicon、种子补到 12 篇、数据库重置重建）；批 1–5 未开始 | 本文件 → 五、阶段记录（阶段 4 收尾时补写）；`ai-log.md` → 阶段 4 |
+| 4 | 前端模块二 / 三（列表、详情、Markdown、TOC） | **已完成**：批 0 ✅ ／ 批 1 ✅ ／ 批 2 ✅ ／ 批 3 ✅ ／ 批 4 ✅ ／ 批 5 ✅（**作者已确认全部批次**） | 本文件 → 五、阶段记录；`ai-log.md` → 阶段 4 |
 | 5 | 前端模块四 / 五 / 六（搜索过滤、评论点赞、本地持久化） | 未开始 | — |
 | 6 | 前后端对接（真实数据替换 mock） | 未开始 | — |
 | 7 | 功能迭代一（前端体验：进度条、回到顶部、无限滚动 + 骨架屏） | 未开始 | — |
@@ -143,3 +143,26 @@
 - **遗留问题**：见 `docs/current-state.md` 第五节；新增 13（过渡观感与 reduced-motion 禁用待作者目视）与 14（触摸点按路径待真机补验）；第 10 条"派生进程残留"在阶段 3 又复现 4 次（node 占 5173）。
 - **下一步**：阶段 4 —— 前端模块二 / 三：文章列表（卡片、分页或无限滚动、骨架屏、悬停动效）与文章详情（Markdown 渲染、代码高亮、阅读进度条、TOC、图片懒加载）；**开工前需向作者申请** `frontend/public/` 目录与补齐全量种子文章（约 12 篇）。
 - **阶段收尾**（作者确认后）：批 0–3 依次提交 `8c5923d` / `7de72da` / `b257499` / `b1a517f`，批 4（含本文档更新）提交 `378e3b0`；本文件的阶段记录与 `current-state.md` 的整份覆盖随此后的一次文档提交入库（提交号见 `git log` 最新一条）。
+
+### 阶段 4：前端模块二 / 三（文章列表与文章详情，批 0–批 5，实测通过 · 作者已确认入库）
+
+- **我的提示词摘要**：新会话开场要求"**先不要写代码**"，先读 6 份文件后用不超过 10 行总结现状；随后"**遗留问题 1 已验收完毕，请继续，分批列出需要的事项**"；AI 给出阶段 4 分批方案（批 0–5）+ 3 项开工申请 + 10 个决策点，作者回复"**三项申请均同意；决策点 6 不必新增（依赖）；其他决策均同意**"；期间就"种子 tag ID 冲突"作者选择"**重置数据库**"；之后逐批确认："批 0 通过，请继续" / "确认决策 AB，批 1 通过，请继续" / "批 1 通过但先确认决策 AB" / "批 2 通过" / "批 3 通过" / "批 4 通过，请继续"。
+- **AI 做了什么（按批）**：
+  1. **批 0（开工基线）**：新建 `frontend/public/favicon.svg` + 12 张**自绘封面 SVG**（自绘图元、无 `<text>`、无外部引用，实拍 13 张全部正常渲染）；`data.sql` 由 3 篇扩为 **12 篇 + 8 标签 + 23 条关联**并加封面回填；`index.html` 引用 favicon；**按标准路径重置数据库**并复验幂等。过程中**发现并修复 1 个真实数据问题**（固定 tag ID 与阶段 2 残留行冲突导致「前端」标签未建成，报错记录 6）。
+  2. **批 1（`src/api/` 接入层）**：`http.js`（统一 `/api` + 查询串 URI 编码 + 8s 超时 + 外部 signal 转发 + `{code,message,data}` 解包 + 五类失败归一）、`error.js`（`ApiError` + `isNotFound` / `isValidationError`）、`articles.js`、`tags.js`；**14 项真实调用用例 14/14 通过**（正例 8 + 异常 6）。期间记录 1 个真实启动故障（8080 被非本会话实例占用，报错记录 7）。
+  3. **批 2（文章列表 + 首页门面）**：`ArticleCard` / `ArticleList`（四态容器）/ `ArticleSkeleton` / `Pagination` + `utils/date.js`；重写 `ArticlesView`（页码与 `?page=N` 双向同步、请求序号守卫丢弃过期响应）与 `HomeView`（决策 T）；先加 `/articles/:id` 路由 + 占位详情页（决策 AC）；**10 项浏览器实测通过**。
+  4. **批 3（文章详情 + Markdown）**：`utils/markdown.js`（markdown-it `html:false` + `highlight.js/lib/common` + DOMPurify；核心规则补标题 id；外链 target+rel；未知语言转义不高亮）、`MarkdownRenderer`、`SkeletonBlock`（骨架原语，决策 AD）；`base.css` 追加 `--hl-*` 亮/暗配色（决策 V）；重写 `ArticleDetailView`（加载骨架 / 404 只给返回 / 错误可重试，决策 AE）；**15 项管线断言 + 6 项页面实测**。首轮 3 条断言 FAIL 经排查是**断言写错**（`html:false` 下原始标签被转义而非删除），修正后全绿。
+  5. **批 4（加分项）**：`TableOfContents`（桌面固定栏 / 窄屏隐藏，决策 Y）、`utils/scrollSpy.js`（scroll + `getBoundingClientRect`）、`utils/reveal.js`（全局指令 `v-reveal`）、`markdown.js` 图片懒加载规则；列表卡片错落进场。**自查出并修复 2 个真实缺陷**（报错记录 8）：进场动画把首屏内容永久藏在 `opacity:0`（改为视口内元素挂载即显现）、详情页目录永远为空（取目录挪到 `finally` + `nextTick` 之后）。
+  6. **批 5（收尾）**：构建终测 + 接口侧终验 + 浏览器终验（首页 / 深链第 2 页 / 路由 404 / 窄屏列表）+ `README.md` 功能清单与加分项状态更新 + 本文件阶段记录 + `current-state.md` 整份覆盖。
+- **改动文件**：
+  - 新建（完整）：`frontend/public/favicon.svg`、`frontend/public/images/covers/*.svg`（12 张）、`frontend/src/api/{http,error,articles,tags}.js`、`frontend/src/utils/{date,markdown,reveal,scrollSpy}.js`、`frontend/src/components/{ArticleCard,ArticleList,ArticleSkeleton,Pagination,SkeletonBlock,MarkdownRenderer,TableOfContents}.vue`
+  - 修改（完整）：`frontend/src/{main.js,router/index.js,App.vue}`（App.vue 未变，路由改了）、`frontend/src/views/{HomeView,ArticlesView,ArticleDetailView}.vue`、`frontend/src/styles/base.css`、`frontend/index.html`、`backend/src/main/resources/data.sql`
+  - 删除：`frontend/src/{api,utils}/.gitkeep`
+  - 文档：`README.md`、`docs/{current-state,api-contract（未改字段）,collaboration-log,ai-log,debug-log}.md`
+- **验证命令与结果**（均为实测输出，明细见 `ai-log.md` 各批与 `current-state.md` 第四节）：
+  - 逐批 `npm run build`：41 → 55 → 119 → 123 模块（`✓ built in` 126 / 156 / 169 / 200 ms），详情页 chunk 286.22 kB 全在懒加载链上
+  - 数据库与种子：`article=12`、`tag=8`、`article_tag=23`，封面 12/12，二次启动幂等
+  - 接口层 14 项；Markdown 管线 15 项（含两层 XSS 防护与 DOMPurify 直接施压）；浏览器实测累计 **22 项**（列表 10 + 详情 6 + 加分项 6）+ 收尾终验 5 项
+  - 作者侧：批 0–批 5 全部回复通过
+- **遗留问题**：见 `docs/current-state.md` 第五节（共 23 条，其中 8 / 9 / 10 / 16–23 仍未闭环且不阻塞）。阶段 4 新增的未闭环项：无自动化回归（16）、`?page` 越界不回退（17）、骨架屏出现时机无法抓拍（18）、详情页无上一篇/下一篇（19）、详情 chunk 偏大（20）、Markdown 图片懒加载无真实内容可验证（21）、窄屏无目录入口（22）、阅读进度条与回到顶部留阶段 7（23）。
+- **下一步**：**阶段 5 —— 前端模块四 / 五 / 六**：搜索与分类过滤（实时搜索 + 防抖、多选标签 + `tagMode`、空结果动画）、评论与点赞（表单校验、点赞动画、Toast）、本地持久化与一键重置（`blog:visitorId`、已点赞集合）；需新增 `src/api/comments.js` / `likes.js`。另需作者拍板：阶段 6 原定为"前后端对接（真实数据替换 mock）"，而阶段 4 起已直接联调真实后端（决策 R），建议改为"全链路回归 + 异常 / 空态演练 + 契约逐条复核"。
