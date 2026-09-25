@@ -2,7 +2,7 @@
 
 > **状态：已确认（作者回复"契约全同意"）。** 后端与前端按本文件实现；实现期间如需变更字段，必须先改本文件并重新确认。
 > 契约是前后端唯一事实来源：任何改动先改本文件，再改后端，再改前端。
-> 最后更新：阶段 1 批 2 起草 → 本轮确认为 v1.0。
+> 最后更新：阶段 1 批 2 起草 → 本轮确认为 v1.0；**阶段 5 批 1 补注**（作者已确认）：`GET /api/articles/{id}/likes` 的 `visitorId` 为必填，缺失返回 `40001` —— 仅补明确表述，**未改任何字段**。
 
 ## 确认记录
 
@@ -267,7 +267,7 @@ HTTP 状态码与业务 `code` 同时返回：前端先看 HTTP 是否 2xx，再
 
 ### 13–15. 点赞
 
-- `GET /api/articles/{id}/likes?visitorId=xxx`：返回 `LikeStateVO`（前端初始化点赞按钮状态）
+- `GET /api/articles/{id}/likes?visitorId=xxx`：返回 `LikeStateVO`（前端初始化点赞按钮状态）；`visitorId` **必填**（缺失或不符合 8–64 位格式返回 `40001`，阶段 5 批 1 实测确认）
 - `POST /api/articles/{id}/likes`，请求体 `{ "visitorId": "..." }`：**幂等**，已点赞再次调用仍返回 `liked: true` 与当前总数
 - `DELETE /api/articles/{id}/likes`，请求体 `{ "visitorId": "..." }`：**幂等**，未点赞时调用返回 `liked: false`
 - **唯一约束**：`like_record(article_id, visitor_id)` 唯一，数据库层面防止重复计数
