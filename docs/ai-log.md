@@ -472,3 +472,98 @@
 - 验证命令与结果（均为实测输出）：见上文第 2、3、4 点；收尾 `netstat` 复查 `5173/8080 均已释放`。
 - 遗留问题：见 `docs/current-state.md` 第五节（共 23 条，其中 8 / 9 / 10 / 16–23 仍未闭环且不阻塞；其余为已解决的历史项）。
 - 下一步：**阶段 4 全部完成，等待作者验收**；之后进入**阶段 5（前端模块四 / 五 / 六：搜索与分类过滤、评论与点赞、本地持久化与一键重置）**——届时按惯例先出分批方案与决策点，并需新增 `src/api/comments.js` / `likes.js`；另有一项需作者拍板：阶段 6 原定为"前后端对接（真实数据替换 mock）"，而阶段 4 起已直接联调真实后端（决策 R），建议改为"全链路回归 + 异常 / 空态演练 + 契约逐条复核"。
+
+### 阶段 5：前端模块四 / 五 / 六（批 0：开工基线 —— 文档更正 + 正文配图）
+- 我的提示词摘要："继续《VibeCoding 个人博客全栈项目》…**先不要写代码**"，先读 6 份文件后用不超过 10 行总结现状；随后"**分批列出需要的事项**"；对 AI 给出的分批方案（批 0–6）+ 3 项开工申请 + 14 个决策点回复"**均同意，请继续**"。
+- AI 做了什么：
+  1. **过时条目更正（3 处）**：`AGENTS.md` §2 的 `Vue Router 4` → `Vue Router 5 / Pinia 4`（与 `package.json` 实测版本一致）、后端语言注明"**已实测**可运行 Spring Boot 4.1.1"；§9 环境表把"Node.js / npm **未安装**（最高优先级阻塞项）"与"JDK 兼容性**未实测**"改成实测结论；`README.md` 顶部状态块与 §一 技术栈表同步更正；
+  2. **决策 13（顺手关闭遗留 21）**：新增自绘单行 SVG `frontend/public/images/articles/markdown-pipeline.svg`（与 12 张封面同风格：无 `<text>`、无外部引用、1.8 kB）；`backend/src/main/resources/data.sql` 末尾追加**幂等**回填 `UPDATE article SET content = content || … WHERE id = 6 AND instr(content, '/images/articles/') = 0`（沿用既有封面回填写法，老库与全新库结果一致）；
+  3. **验证**：`npm run build` → 123 模块 / 216ms；后端**两次启动**复核 `total=12`、标签 8 个、`id=6` 正文配图命中数仍为 1（**幂等**）；浏览器 `/articles/6` 目视确认文末渲染出配图；临时探针页用**真实种子内容**过 `renderMarkdown()` 断言：`contentHasImageMarkdown=true`、`imgLoading=lazy`、`imgAlt` 保留、`headingsWithId=4`、`scriptTagsLeft=0`、`realLoadNaturalWidth=267`（探针页验证后删除）。
+- 改动文件：`AGENTS.md`、`README.md`、`backend/src/main/resources/data.sql`（修改，**完整**）；`frontend/public/images/articles/markdown-pipeline.svg`（新增，**完整**）。
+- 验证命令与结果（均为实测输出）：见上文第 3 点；收尾清理派生 JVM / node 各 1 个，复查 `5173/8080 均已释放`。
+- 遗留问题：**关闭遗留 21**（Markdown 正文图片懒加载已有真实内容可肉眼复验）；新增观察项（后台标签页进场动画不推进）由作者确认后登记。
+- 下一步：批 1 —— 本地身份与存储层（`utils/storage.js`、`utils/visitor.js`）+ `src/api/` 评论 / 点赞接入层。
+- 提交：`d6167ea chore: 阶段 5 批 0 开工基线（文档过时条目更正 + 第 6 篇正文配图与幂等回填）`。
+
+### 阶段 5：前端模块四 / 五 / 六（批 1：本地身份与存储层 + 接入层）
+- 我的提示词摘要："**批 0 完成，补充问题，请继续**"（作者指明"补充问题"指 AI 提出的后台标签页动画观察项）；随后"**你提出的三条均确认，批 1 完成，请继续**"（契约补注 / 重置语义 / 暂未引用模块三问全同意）；再一轮"**均同意，请继续**"。
+- AI 做了什么：
+  1. **文档补充**（作者确认后）：`docs/api-contract.md` §4.13 补注"`GET /api/articles/{id}/likes` 的 `visitorId` **必填**（缺失返回 40001，阶段 5 批 1 实测确认）"，文末"最后更新"行同步（**未改任何字段**）；`docs/debug-log.md` 观察项新增"后台标签页里进场动画不推进"；
+  2. **新建 `src/utils/storage.js`**：`blog:` 前缀统一封装（`readRaw / writeRaw / removeRaw / readJson / writeJson / listKeys / clearAll`），存储不可用时静默降级；
+  3. **新建 `src/utils/visitor.js`**：`getVisitorId()` —— 优先 `crypto.randomUUID()`，老环境兜底时间戳 + 随机数，校验 8–64 位合法字符；**每次直读存储不做缓存**，DevTools 改 / 清后行为自洽；
+  4. **新建 `src/api/comments.js`**（列表 / 新增 / 删除，删除带 `visitorId`）与 **`src/api/likes.js`**（GET / POST / DELETE，契约里三个操作都幂等）；
+  5. **`src/api/articles.js` 参数规范化**：`tags` 支持数组（过滤空项 → `join(',')`）、`keyword` 去首尾空白，JSDoc 同步为 `tags?: string|string[]`；
+  6. **验证**：临时探针页导入真实模块、经 Vite 代理打真实后端，**25 项用例 25/25 通过**（正例 + 异常 40001 / 40002 / 40004 + 幂等 + 归属校验），探针页验证后删除。
+- 改动文件：`frontend/src/utils/storage.js`、`frontend/src/utils/visitor.js`、`frontend/src/api/comments.js`、`frontend/src/api/likes.js`（新增，**完整**）；`frontend/src/api/articles.js`（修改，**完整**）；`docs/api-contract.md`、`docs/debug-log.md`（文档，单独提交 `b12bcd4`）。
+- 验证命令与结果（均为实测输出）：`npm run build` → 228ms（新模块尚未被视图引用，未进打包图，符合决策 AB 的"不做死代码"）；25 项用例：列表 `size=5→total=12`；`tags=['Vue','前端']` AND → `total=2`、OR → `total=5`；`keyword='  SQLite  '` trim 后 `total=3`；`size=999 → 40002`；评论新建 → 倒序置顶、响应无 `authorEmail`；空昵称 → `40001 fields.authorName=昵称不能为空`；非法邮箱 → `40001 fields.authorEmail=邮箱格式不正确`；他人 visitorId 删除 → `40004`；点赞 / 取消两端幂等 + 不存在文章 → `40004`；`clearAll()` → `removed=3 / leftKeys=[]`；用例自清理（评论与点赞回到 0）。
+- 遗留问题：无；**契约补注一项**（likes 的 visitorId 必填）已按作者确认写入契约。
+- 下一步：批 2 —— 模块四：搜索与分类过滤。
+- 提交：`3a4a7c7 feat(frontend): 阶段 5 批 1 本地身份与存储层 + 评论/点赞接入层`。
+
+### 阶段 5：前端模块四 / 五 / 六（批 2：搜索与分类过滤）
+- 我的提示词摘要："**批 2 完成，请继续**"（批 1 通过并继续）。
+- AI 做了什么：
+  1. **新建 `src/utils/debounce.js`**：手写防抖（默认 300ms），返回函数带 `cancel()`；
+  2. **新建 `components/SearchInput.vue`**：输入即过滤 + 防抖，清空与回车**立即**生效；外部改动（前进后退 / 清除筛选）回填输入框但不吃用户正在输入的首尾空白；
+  3. **新建 `components/TagFilter.vue`**：多选 chips（带文章数）+ `同时包含 / 任一即可`（仅选中 ≥2 时出现）；桌面铺开、**≤767px 折叠**为展开 / 收起；
+  4. **新建 `components/EmptyState.vue`**：内联 SVG 插画（主题令牌上色）+ 文案 + 可选操作按钮 + CSS 入场动画；
+  5. **重写 `views/ArticlesView.vue`**：`keyword / tags / tagMode / page` 与地址栏双向同步；**改筛选用 `replace`、翻页用 `push`**；筛选变化归第 1 页；**越界回退**（`?page=99` → `replace` 到最后一页，**关闭遗留 17**）；空态文案与按钮按场景切换；标签加载失败可重试；
+  6. **`components/ArticleList.vue`** 空态改用 `EmptyState`（新增 `empty-description` / `empty-action-text`）；**`components/ArticleCard.vue`** 标签由纯文本改为**可点链接**（`z-index:1` 浮到整卡覆盖层之上）；**`styles/base.css`** 新增通用控件类 `.btn / .btn--ghost / .input / .chip`（已有组件样式未动）。
+- 改动文件：新增（**完整**）`frontend/src/utils/debounce.js`、`frontend/src/components/{SearchInput,TagFilter,EmptyState}.vue`；修改（**完整**）`frontend/src/views/ArticlesView.vue`、`frontend/src/components/{ArticleList,ArticleCard}.vue`、`frontend/src/styles/base.css`。
+- 验证命令与结果（均为实测输出）：`npm run build` → **131 模块 / 236ms**（`ArticlesView` chunk 2.73 → 8.73 kB）；浏览器 **8 项实测**：① 默认列表「共 12 篇文章」+ 窄屏标签筛选默认折叠、展开后 8 个 chip 计数正确；② 真实输入 `fill("CSS")` → 防抖后 URL 变 `?keyword=CSS`、「筛选出 1 篇文章」；③ `?tags=Vue,前端&tagMode=or` → 5 篇 + chip 实心选中 + 「任一即可」选中（截图）；④ `?keyword=zzzz` → 空结果插画 + 「清除筛选」；⑤ 点「清除筛选」→ 回到 12 篇；⑥ 点卡片标签 → `?tags=Vue`（层级修复有效）；⑦ `?page=99` → 自动回退 `?page=2`；⑧ 首页回归正常。
+- 遗留问题：**关闭遗留 17**（`?page` 越界不回退）。
+- 下一步：批 3 —— 模块五 A：评论区。
+- 提交：`bf78030 feat(frontend): 阶段 5 批 2 列表搜索与标签过滤（URL 同步 + 越界回退 + 空结果动画）`。
+
+### 阶段 5：前端模块四 / 五 / 六（批 3：评论区）
+- 我的提示词摘要："**批 3 通过，请继续**"（批 2 通过并继续）。
+- AI 做了什么：
+  1. **新建 `src/utils/validate.js`**：评论表单校验（昵称 1–30、内容 1–1000、邮箱选填需合法），数值与契约 4.9 节一致，与服务端 `40001 fields` 共用字段名；
+  2. **新建 `src/stores/myComments.js`**（决策 8）：本机"我发过的评论"账本（`remember / forget / isMine / reload`，键 `blog:myComments`，上限 200 条）—— 契约不回传 `visitorId`，删除入口只对本机评论显示；
+  3. **新建 `components/CommentForm.vue`**：昵称（记忆到 `blog:commentAuthor`）/ 邮箱（选填，标注"仅服务端保存、不会公开"）/ 内容（`0 / 1000` 实时计数）；`role="status"` 播报"评论已发表"；服务端字段级错误按字段回填；
+  4. **新建 `components/CommentItem.vue`**：**仅本人可见**的删除入口 + 行内二次确认；删除遇 `40004` 视为"已不存在"并清理本地账本；
+  5. **新建 `components/CommentSection.vue`**：列表 + 首屏 10 条 +「加载更多（还有 N 条）」（带去重）+ 骨架 / 错误重试 / 空态 + 总数经 `total-change` 回传；
+  6. **`utils/date.js`** 新增 `formatDateTime()`；**`views/ArticleDetailView.vue`** 正文下方挂评论区，`onCommentTotalChange()` 同步头部 meta 的「评论 N」。
+- 改动文件：新增（**完整**）`frontend/src/utils/validate.js`、`frontend/src/stores/myComments.js`、`frontend/src/components/{CommentForm,CommentItem,CommentSection}.vue`；修改（**完整**）`frontend/src/utils/date.js`、`frontend/src/views/ArticleDetailView.vue`。
+- 验证命令与结果（均为实测输出）：`npm run build` → **273ms**（详情 chunk 286.22 → 296.44 kB）；浏览器 **8 项实测**：① 他人评论**无删除入口**；② 空值提交 → 两条字段级错误且未发请求；③ 非法邮箱 → `邮箱格式不正确`（其余字段保留）；④ 合法提交 → 评论置顶、「评论 2」、meta 同步、播报"评论已发表"、内容清空；⑤ 我的评论有「删除」、他人的没有（**决策 8 核心**）；⑥ 行内确认删除 → UI 剩 1 条 + **服务端复核 `total=1`**（真删）；⑦ 造 11 条评论 → 「加载更多（还有 1 条）」→ 点击后 11 条全出、倒序正确无重复；⑧ 11 条他人评论同样无删除入口。收尾清理测试评论（article 7 / 12 / 6 全部回到 0）。
+- 遗留问题：无新增。
+- 下一步：批 4 —— 模块五 B：点赞 + Toast。
+- 提交：`5979b18 feat(frontend): 阶段 5 批 3 文章评论区（表单校验 + 归属账本 + 加载更多）`。
+
+### 阶段 5：前端模块四 / 五 / 六（批 4：点赞 + Toast）
+- 我的提示词摘要："**批 4 通过，请继续**"（批 3 通过并继续）。
+- AI 做了什么：
+  1. **新建 `src/stores/toast.js`**：最多 3 条、默认 2.6s 自动消失、可手动关闭；定时器集中管理；**只存内存不落 localStorage**；
+  2. **新建 `components/ToastStack.vue`**：`<Teleport to="body">` + `TransitionGroup` + `aria-live="polite"`，`z-index: 40`（压过页头 20 / 遮罩 10）；
+  3. **新建 `src/stores/likes.js`**：本机"我赞过哪些文章"账本（键 `blog:likedArticles`），**明确不作为计数依据**；
+  4. **新建 `components/LikeButton.vue`**：挂载即查后端真实状态并对齐本地账本；点击期间禁用防连点；成功后用返回值覆盖；失败保留原状态 + 错误 Toast；计数变化有 pop / pulse 动画 + `role="status"` 播报；
+  5. **`App.vue`** 挂 `<ToastStack />`；**`base.css`** 新增语义色 `--color-like`（亮 `#d6336c` / 暗 `#ff7b9c`）；**`views/ArticleDetailView.vue`** 正文下方新增 `.detail__actions` 互动区并回传计数给 meta。
+- 改动文件：新增（**完整**）`frontend/src/stores/{toast,likes}.js`、`frontend/src/components/{ToastStack,LikeButton}.vue`；修改（**完整**）`frontend/src/App.vue`、`frontend/src/styles/base.css`、`frontend/src/views/ArticleDetailView.vue`。
+- 验证命令与结果（均为实测输出）：`npm run build` → **290ms**；浏览器 **7 项实测**：① 初始「点赞 0」；② 点赞 → 实心粉心「已点赞 1」+ meta 同步 + 播报 + **服务端 `likeCount=1`**；③ 刷新后仍「已点赞 1」（以后端为准）；④ 取消 → 「点赞 0」+ 服务端 0；⑤ **异常 Toast**：停后端后点赞 → 点击后 **108ms** 捕获 `无法连接后端服务（HTTP 502），请确认后端已在 http://localhost:8080 运行`，状态未被误改；⑥ 暗色下按钮 / 表单 / 空态配色正常；⑦ 重启后端无残留点赞。
+- 遗留问题：Toast 的**视觉截图**两次都晚于 2.6s 自动消失窗口（模型往返耗时 > 2.6s），功能证据用 `page.wait_for` 记录；如作者需要留图，可在批 6 用长驻 Toast 补拍。
+- 下一步：批 5 —— 模块六：本地持久化与一键重置。
+- 提交：`a8d499f feat(frontend): 阶段 5 批 4 点赞与 Toast（计数以后端为准 + 全局提示）`。
+
+### 阶段 5：前端模块四 / 五 / 六（批 5：本地持久化与一键重置）
+- 我的提示词摘要："**批 4 通过，请继续**"（批 4 通过并继续）。
+- AI 做了什么：
+  1. **新建 `components/LocalDataPanel.vue`**：本地数据一览（主题偏好 / 访客标识（掩码）/ 已点赞篇数 / 我发过的评论数 / 昵称记忆，每行标注 `blog:` 键名）+ 当前占用键清单 + **一键重置**（行内二次确认）；重置 = `clearAll()` + 三个 store `reload()` / 回默认 + Toast 反馈；
+  2. **重写 `views/AboutView.vue`**：由占位页落地为完整页（项目定位 / 技术栈 / **「数据放在哪」**说明重置的真实语义）+ 挂载 `LocalDataPanel`；
+  3. **自查出并修复 1 个真实缺陷**：首次重置后「当前占用的键」显示"（无）"，而主题 store 会在下一个 tick 才把默认值写回 `blog:theme` —— tick 竞态导致显示不准。修复：重置流程 `await nextTick()` 后再取快照，并加 `flush: 'post'` 监听让面板随主题 / 点赞 / 评论账本**实时刷新**（复验：点主题按钮后面板立即变「亮色」，重置后键列表准确显示 `theme`）。
+- 改动文件：新增（**完整**）`frontend/src/components/LocalDataPanel.vue`；修改（**完整**）`frontend/src/views/AboutView.vue`。
+- 验证命令与结果（均为实测输出）：`npm run build` → **283ms**；浏览器实测：① 概览与真实数据一致（暗色 / `c877c4d8…bc29` / 昵称"批 3 探针" / 5 个键）；② 点赞后「已点赞文章 1 篇」且服务端一致；③ 重置 → Toast `本地数据已重置（清理 5 项）`（108ms 捕获）+ 主题回「跟随系统」+ 五行归零 + 访问标识"尚未生成"；④ 修复后复验见上；⑤ **遗留清理**：重置后旧 `visitorId` 的点赞记录已无法用接口删除，按阶段 2 既有做法用临时 JDBC 程序清理（`deleted=1 / remaining=0`），程序已删除，服务端复核 `article 5/6 likeCount=0`。
+- 遗留问题：无新增；演示级语义（重置后换新访客、旧点赞仍计入总数）已写进关于页文案。
+- 下一步：批 6 —— 阶段收尾（构建终测 + 文档同步 + 交作者人工验收）。
+- 提交：`2726566 feat(frontend): 阶段 5 批 5 本地数据面板与关于页（一键重置 + 实时概览）`。
+
+### 阶段 5：前端模块四 / 五 / 六（批 6：收尾 —— 阶段 5 完成，等待作者人工验收）
+- 我的提示词摘要："**批 5 通过，批 6 我需要人工测试本阶段所有增设改动，请继续**" —— 作者明确本阶段的人工验收由自己完成，AI 只做技术收尾 + 提供逐条验收清单。
+- AI 做了什么：
+  1. **构建终测**：`npm run build` → `✓ built in 270ms`（视图各自独立 chunk；共享 chunk 因"关于页也引用 toast / likes store"重新切分）；
+  2. **文档同步**：`README.md`（顶部状态块 / 功能清单 / 加分项 / 已知问题 / localStorage 键与重置说明）、`docs/collaboration-log.md`（关键提示词 #4 补记 + 阶段索引 + 阶段记录）、`docs/debug-log.md`（报错记录 9：批 5 自查缺陷）、`docs/current-state.md`（整份覆盖为阶段 5 完成快照 + 验收要点）；
+  3. **交付人工验收清单**（本阶段新增改动逐条：搜索 / 过滤 / 空态 / 评论 / 点赞 / Toast / 本地数据面板 / 重置 + 三视口 + 三态主题），启动命令含 Git Bash 与 PowerShell 两版；
+  4. **不代签**：阶段验收结论由作者给出（AGENTS.md 协作规则 7）。
+- 改动文件：无业务代码改动（仅 `README.md` 与 `docs/` 四份文档）。
+- 验证命令与结果（均为实测输出）：见第 1 点；服务器与端口状态以作者启动为准（AI 侧验证后已停服并释放 5173 / 8080）。
+- 遗留问题：见 `docs/current-state.md` 第五节。
+- 下一步：作者人工验收 → 若有问题按"报错先记录再修复"流程处理；验收通过后进入**阶段 6**（建议定位为"全链路回归 + 异常 / 空态演练 + 契约逐条复核"，仍待作者拍板）。
