@@ -26,10 +26,10 @@
 | 前端语言 | JavaScript (ES2020+)、HTML、CSS |
 | 前端框架 | Vue 3（Composition API + `<script setup>`） |
 | 构建 / 开发服务器 | Vite，开发端口 `5173` |
-| 路由 / 状态 | Vue Router 4 / Pinia |
+| 路由 / 状态 | Vue Router 5 / Pinia 4（与 `frontend/package.json` 实测版本一致） |
 | 样式 | 原生 CSS + CSS 变量主题系统（**不用** UI 组件库、**不用** CSS 框架） |
 | Markdown | markdown-it + highlight.js + DOMPurify |
-| 后端语言 | Java 21 字节码目标（本机 JDK 26，兼容性待验证） |
+| 后端语言 | Java 21 字节码目标（本机 JDK 26，**已实测可运行 Spring Boot 4.1.1**） |
 | 后端框架 | Spring Boot 4.1.1（Web / JDBC / Validation） |
 | 数据访问 | JdbcTemplate + 手写 SQL（**不用** ORM） |
 | 数据库 | SQLite：`backend/data/blog.db` |
@@ -133,8 +133,8 @@ backend/   Spring Boot 后端：src/main/java/com/example/blog/{controller,servi
 
 | 项 | 现状 | 影响 |
 |---|---|---|
-| JDK | 已装 26（`JAVA_HOME=D:\Java\jdk-26.0.2.1`） | 与 Spring Boot 4.1.1 兼容性**未实测**，报错则改用 Temurin 21 |
-| Node.js / npm | **未安装** | 前端无法启动，最高优先级阻塞项 |
+| JDK | 已装 26（`JAVA_HOME=D:\Java\jdk-26.0.2.1`） | 与 Spring Boot 4.1.1 兼容性**已实测**（`Starting BlogApplication using Java 26.0.2.1`），无需改用 Temurin 21 |
+| Node.js / npm | 已装 **Node 24.21.0 / npm 11.19.0**（经 `scoop install nodejs-lts`） | 前端 install / build / dev 均已实测可用 |
 | Maven | 未安装 | 使用 `mvnw` 包装器，无需安装 |
 | 项目路径 | 含空格（`D:\code\Additional Full-stack Development of Personal blogs`） | 目前低风险，出现工具异常再评估迁移 |
 | 网络 | npm registry / Maven Central / start.spring.io 均可访问（已实测 HTTP 200） | 依赖可正常下载 |

@@ -384,3 +384,10 @@ INSERT OR IGNORE INTO article_tag (article_id, tag_id) VALUES
 UPDATE article SET cover_url = '/images/covers/project-intro.svg' WHERE id = 1 AND cover_url IS NULL;
 UPDATE article SET cover_url = '/images/covers/stack-review.svg' WHERE id = 2 AND cover_url IS NULL;
 UPDATE article SET cover_url = '/images/covers/sqlite-notes.svg' WHERE id = 3 AND cover_url IS NULL;
+
+-- 阶段 5 批 0：正文配图回填（幂等）
+-- 目的：给第 6 篇文章补一张本地 SVG 正文配图，用于肉眼复验 Markdown 正文图片懒加载
+-- 仅在正文尚无本地配图时追加，重复启动不会重复追加
+UPDATE article
+SET content = content || char(10) || char(10) || '![Markdown 渲染流水线示意](/images/articles/markdown-pipeline.svg)'
+WHERE id = 6 AND instr(content, '/images/articles/') = 0;
