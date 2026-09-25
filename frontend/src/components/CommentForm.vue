@@ -3,7 +3,9 @@
 // 校验走 utils/validate.js（与服务端契约同数值）；服务端返回的 40001 字段级原因按同一套字段名回填。
 // 昵称记在本地（blog:commentAuthor）免重复输入；邮箱不记忆（隐私，且契约里本来就只存不返）。
 // 阶段 7 批 5（决策 BM）：向父级暴露 clearStatus()，评论被删除后由父级清掉「评论已发表」提示（闭环遗留 29）。
-import { computed, ref } from 'vue'
+// 阶段 7 批 7（作者验收后修订）：**记过昵称就把输入框收起** —— 只留「以 XXX 的身份评论 · 改昵称」一行，
+//   点「改昵称」才展开输入框；首次访问（本机无记录）或清过本地数据后才默认显示输入框。
+import { computed, nextTick, ref } from 'vue'
 import { createComment } from '@/api/comments'
 import { readRaw, writeRaw } from '@/utils/storage'
 import { getVisitorId } from '@/utils/visitor'
@@ -18,13 +20,17 @@ const emit = defineEmits(['submitted'])
 const AUTHOR_STORAGE_KEY = 'commentAuthor'
 const uid = Math.random().toString(36).slice(2, 8)
 
-const authorName = ref(readRaw(AUTHOR_STORAGE_KEY) || '')
+const rememberedName = readRaw(AUTHOR_STORAGE_KEY) || ''
+const authorName = ref(rememberedName)
 const authorEmail = ref('')
 const content = ref('')
 const errors = ref({})
 const submitting = ref(false)
 const serverError = ref(null)
 const status = ref('')
+// false = 收起输入框（本机记过昵称）；true = 展开让用户填写 / 修改
+const editingName = ref(rememberedName === '')
+const nameInput = ref(null)
 
 const contentLength = computed(() => content.value.length)
 
@@ -34,6 +40,12 @@ function clearStatus() {
 
 // 评论已在别处删掉时，「评论已发表」就不再是事实了 —— 由 CommentSection 在删除成功后调用
 defineExpose({ clearStatus })
+
+async function startEditName() {
+  editingName.value = true
+  await nextTick()
+  nameInput.value?.focus()
+}
 
 async function submit() {
   if (submitting.value) return
@@ -61,6 +73,8 @@ async function submit() {
     content.value = ''
     errors.value = {}
     status.value = '评论已发表'
+    // 昵称已记下：收起输入框，回到「以 XXX 的身份评论」
+    editingName.value = false
     emit('submitted', created)
   } catch (caught) {
     if (caught && caught.fields) {
@@ -78,20 +92,33 @@ async function submit() {
   <form class="comment-form" novalidate @submit.prevent="submit">
     <div class="comment-form__row">
       <div class="comment-form__field">
-        <label class="comment-form__label" :for="`comment-author-${uid}`">
-          昵称 <span class="comment-form__required" aria-hidden="true">*</span>
-        </label>
-        <input
-          :id="`comment-author-${uid}`"
-          v-model="authorName"
-          class="input"
-          type="text"
-          :maxlength="COMMENT_LIMITS.authorNameMax"
-          autocomplete="nickname"
-          :aria-invalid="errors.authorName ? 'true' : 'false'"
-          @input="clearStatus"
-        />
-        <p v-if="errors.authorName" class="comment-form__error">{{ errors.authorName }}</p>
+        <template v-if="editingName">
+          <label class="comment-form__label" :for="`comment-author-${uid}`">
+            昵称 <span class="comment-form__required" aria-hidden="true">*</span>
+          </label>
+          <input
+            :id="`comment-author-${uid}`"
+            ref="nameInput"
+            v-model="authorName"
+            class="input"
+            type="text"
+            :maxlength="COMMENT_LIMITS.authorNameMax"
+            autocomplete="nickname"
+            :aria-invalid="errors.authorName ? 'true' : 'false'"
+            @input="clearStatus"
+          />
+          <p v-if="errors.authorName" class="comment-form__error">{{ errors.authorName }}</p>
+        </template>
+
+        <template v-else>
+          <span class="comment-form__label">昵称</span>
+          <p class="comment-form__identity">
+            以 <strong>{{ authorName }}</strong> 的身份评论
+            <button type="button" class="comment-form__identity-edit" @click="startEditName">
+              改昵称
+            </button>
+          </p>
+        </template>
       </div>
 
       <div class="comment-form__field">
@@ -179,6 +206,34 @@ async function submit() {
 
 .comment-form__required {
   color: var(--color-accent);
+}
+
+/* 记过昵称后的"身份行"（阶段 7 批 7）：min-height 与旁边的邮箱输入框对齐，两列不歪 */
+.comment-form__identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.comment-form__identity strong {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.comment-form__identity-edit {
+  padding: 0;
+  color: var(--color-accent);
+  background: none;
+  border: 0;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 .comment-form__hint {
