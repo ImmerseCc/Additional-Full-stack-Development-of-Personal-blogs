@@ -244,3 +244,44 @@
 1. **浏览器控制台 warn / 网络层 4xx 未直接检查**：本机 Edge 无头模式不产出任何输出（`--dump-dom` / `--enable-logging` / `--log-file` 全空，多次复现），该通道不可用；已改用应用层替代证据（首页 / 详情 / 关于三页在 1.5s 稳定窗口内**无全局错误 Toast**，即无未捕获异常）；
 2. `prefers-reduced-motion` 未做动态仿真（同上，无可用通道）；
 3. 真实移动端触摸点按仍以作者真机为准（阶段 3 已验收过一次）。
+
+---
+
+## 阶段 7 变更摘要（供阶段 9 正式审计参考）
+
+> 本阶段为**纯前端**改动：未改 `docs/api-contract.md`、未改 `docs/data-model.md`、未动 `backend/` 任何文件、未新增任何依赖（前端依赖版本与阶段 6 完全一致）。
+
+### 1. 代码变更清单
+
+| 类型 | 文件 | 说明 |
+|---|---|---|
+| 新增 | `frontend/src/components/ReadingProgress.vue` | 阅读进度条（`role="progressbar"`，rAF 驱动，Teleport 到 body） |
+| 新增 | `frontend/src/components/BackToTop.vue` | 回到顶部按钮（全站挂载，1.5 屏阈值，reduced-motion 瞬时跳转） |
+| **删除** | `frontend/src/components/Pagination.vue` | 无限滚动取代分页后**零引用**（全仓 grep 确认；作者选 A 后批 6 删除） |
+| 修改 | `frontend/src/views/ArticlesView.vue` | 分页 → 累积加载（`?page` = 已加载页数、跨页累积、越界收敛、滚动 `replace`）+ IO 哨兵 + 「加载更多」兜底 |
+| 修改 | `frontend/src/views/ArticleDetailView.vue` | 挂进度条 / 异步管线 + `<Suspense>` / 窄屏折叠目录面板 |
+| 修改 | `frontend/src/components/ArticleList.vue` | 新增 `appending`（追加骨架 + `aria-busy`） |
+| 修改 | `frontend/src/components/TableOfContents.vue` | 新增 `navigate` emit、`showTitle`；**跳转改为"先收起、后滚动"** |
+| 修改 | `frontend/src/components/CommentForm.vue` / `CommentSection.vue` | 暴露 / 调用 `clearStatus()`（删除评论后清提示） |
+| 修改 | `frontend/src/App.vue` | 引入 `BackToTop` |
+| 修改 | `frontend/src/styles/base.css` | 亮色主色 `#3b6ef5 → #3563e0`、`--color-accent-soft → rgba(53,99,224,.14)` |
+
+### 2. 构建体积变化（`npm run build`，均为实测）
+
+| 产物 | 阶段 6 收尾 | 阶段 7 收尾 |
+|---|---|---|
+| 详情页 shell | `ArticleDetailView` 297.51 kB（gzip 111.03） | **18.38 kB（gzip 6.70）** |
+| Markdown 管线 | 与详情页同包 | **独立 chunk 281.34 kB（gzip 104.55）** |
+| 共享 chunk | `_plugin-vue_export-helper` 63.56 kB（gzip 24.91） | **70.36 kB（gzip 27.28）**（+2.4 kB gzip，源自首次引入 `<Suspense>`） |
+| 列表页 | `ArticlesView` 8.80 kB | 8.63 kB |
+| 入口 | `index` 54.53 kB | 55.57 kB（新增两个组件的注册） |
+
+### 3. 新增观察项（已记入 `docs/debug-log.md`）
+
+- **合成点击打不开 `<details>`**（触摸模拟下坐标点击无效，`click_if_interactive` 只识别为 generic 角色）→ 工具限制，验证走键盘路径；
+- **详情页"异步管线加载失败"的表现未演练** → dev 模式的报错覆盖层与生产行为不一致，如后续要加固，可在 `defineAsyncComponent` 上补 `errorComponent`。
+
+### 4. 本次审计可复核项与未覆盖项
+
+- **可复核**：`npm run smoke` 97/97；`npm run build` 产物分包（见上表）；对比度（`#3563e0` 对白底 5.23，node 按 WCAG 公式实算）；六个模块的浏览器走查记录（`docs/demo/stage7-01…10`）+ 各批 ai-log 条目。
+- **未覆盖（如实登记）**：骨架屏出现时机（遗留 18，本机请求约 10 ms 抓不到）；异步 chunk 加载失败路径；`prefers-reduced-motion` 的动态仿真（仍为静态证据）；浏览器控制台 warn 与网络层 4xx（本机 Edge 无头不可用）—— 与阶段 6 的未覆盖范围一致，建议在阶段 9 的正式审计中统一处理。

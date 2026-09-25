@@ -754,3 +754,17 @@
 - 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 254ms`；`npm run smoke` → `全部通过：97/97 项断言`；对比度实算见第 2 点；E2E 见第 4 点。
 - 遗留问题：本批闭环**遗留 29（评论提示）与 30（主色对比度）**。阶段 7 剩余未闭环：18（骨架屏抓拍，工具限制）、20 / 27（拆包总量未降，BH② 已拍板暂不做）、16（浏览器层回归仍靠人工）。
 - 下一步：**批 6 —— 收尾**（删 `Pagination.vue`、整阶段回归 + 截图归档 + 文档同步 + 交付人工验收清单；验收结论由作者给出），做完停下等作者确认。
+
+### 阶段 7：功能迭代一（批 6：收尾 —— 阶段 7 完成，等待作者人工验收）
+- 我的提示词摘要："**批 5 通过，请继续**"（作者确认批 5 并授权批 6，即阶段收尾）。
+- AI 做了什么：
+  1. **按作者选择删除无引用文件**：全仓 grep 确认 `frontend/src/components/Pagination.vue`（137 行，阶段 4 批 2 产物）**零引用**（`src/`、`index.html`、`scripts/`、`package.json` 均无命中）后 `git rm`；构建产物中确认无 Pagination chunk；
+  2. **整阶段终测**：`npm run build` → **255ms**（`index` 55.57 kB / gzip 22.34 kB、详情 shell **18.38 kB** / gzip 6.70 kB、管线 chunk 281.34 kB / gzip 104.55 kB、共享 chunk 70.36 kB / gzip 27.28 kB）；`npm run smoke` → **97/97 项断言**；
+  3. **整阶段浏览器回归**：1920×1080 亮色（内容居中 + 右侧目录，无破版）、1920×1080 暗色、`/about` 本地数据面板键值正常、首页与列表页无回归；连同本阶段前几批的 375 / 768 / 键盘路径实测，六个模块全部走查通过；
+  4. **数据终核**（临时 JDBC 直读）：`article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0`（批 5 的评论演练已还原，零残留）；
+  5. **文档同步**：`README.md`（顶部状态块 + 前端模块表 + 加分项）、`docs/current-state.md`（**整份覆盖**为「阶段 7 完成 × 待验收」快照 + **13 条人工验收清单**）、`docs/collaboration-log.md`（阶段 7 阶段记录 + 阶段索引行）、`docs/ai-log.md`（本段）、`docs/audit-report.md`（新增「阶段 7 变更摘要」供阶段 9 正式审计）；
+  6. **不代签**：阶段验收结论由作者给出（AGENTS.md 协作规则 7）。
+- 改动文件：删除 `frontend/src/components/Pagination.vue`；新增截图 `docs/demo/stage7-09-responsive-1920.png`、`stage7-10-dark-1920.png`；文档 `README.md`、`docs/{current-state,collaboration-log,ai-log,audit-report}.md`（**均为完整文档**，无占位）；**无新增业务代码**。
+- 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 255ms`；`npm run smoke` → `全部通过：97/97 项断言`；浏览器回归见第 3 点。
+- 遗留问题：见 `docs/current-state.md` 第五节（阶段 7 期间闭环 18 / 20·27（部分）/ 22 / 23 / 24 / 29 / 30）。
+- 下一步：**作者按 13 条清单人工验收**；通过后进入**阶段 8（功能迭代二：后端能力）**。
