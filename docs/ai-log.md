@@ -669,3 +669,18 @@
 - 验证命令与结果：本轮为文档轮，**未运行新的构建 / 接口命令**；沿用批 5 的终测实测值（`npm run build` **207ms**、`npm run smoke` **97/97 项断言**、数据 `12 / 8 / 23 / 0 / 0`、5173 / 8080 均已释放）。
 - 遗留问题：见 `docs/current-state.md` 第五节（共 30 条）；**遗留 29（评论「已发表」提示）仍待作者判断**，遗留 30（亮色主色对比度 4.44）建议阶段 7 处理。
 - 下一步：**阶段 7（功能迭代一）** —— 作者新开会话后，AI 先出分批方案与决策点，范围建议：阅读进度条、回到顶部、无限滚动 + 骨架屏、窄屏目录折叠入口、详情页 chunk 拆包（决策 AZ），以及遗留 29 / 30 的体验修正。
+
+### 阶段 7：功能迭代一（批 0：开工基线 —— 阶段 7 开工，分批方案与决策 BF–BO 已确认）
+- 我的提示词摘要：新会话开场"**先读 AGENTS.md 和 docs/current-state.md，请先不要写代码**"（读 6 份文件 + ≤10 行总结）→ 随后"**请继续，分批列出需要的事项**"（AI 给出阶段 7 分批方案 批 0–批 6 + 决策点 BF–BO）→ 作者"**均同意，请继续**"（批准全部决策点，授权从批 0 开始，**本轮无新增关键提示词编号**；模式同 #4）。
+- AI 做了什么（批 0）：
+  1. **只读探测**：`netstat` 确认 5173 / 8080 均空闲；`git status` 干净（分支 `main`，最近提交 `95defd1`）；确认 JDK 26 / Node 24.21.0 / `sqlite-jdbc 3.53.4.0`（jar 在本地仓库）可用，**本机无 `sqlite3` CLI**（数据库复核沿用"临时 JDBC 程序"做法）；
+  2. **启动两端并采集基线**：后端 `./mvnw -B -ntp spring-boot:run` → `Started BlogApplication in 1.701 seconds`（Java 26.0.2.1 / Spring Boot v4.1.1 / Spring v7.0.9 / Tomcat 11.0.24，JVM PID 4200）；`GET /api/health` → `{"code":0,"message":"ok","data":{"status":"UP","time":"2026-09-25T20:19:20"}}`；前端 `npm run dev` → `VITE v8.3.0  ready in 349 ms`，`http://127.0.0.1:5173/` → HTTP 200；
+  3. **构建基线**：`npm run build` → **151 模块 / `✓ built in 252ms`**；`index-CjeFVLwA.js 54.53 kB / gzip 22.08 kB`、详情 chunk `ArticleDetailView-CPoyqLjg.js 297.51 kB / gzip 111.03 kB`、`_plugin-vue_export-helper 63.56 kB` —— **与阶段 6 收尾完全一致**（基线未漂移，可直接作为拆包前后对比的参照）；
+  4. **接口回归基线**：`npm run smoke` → **全部通过：97/97 项断言**（含收尾 5 项数据还原断言）；
+  5. **数据库只读复核**（新增临时程序 `backend/target/tmp-check/DbCheck.java`，直读不经接口）：`article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0`；**6 张表（5 业务表 + `sqlite_sequence`）/ 8 个索引（5 显式 `idx_*` + 3 自动）** / `journal_mode=delete` / 12 篇全为 `PUBLISHED` —— 与阶段 6 收尾状态一致；
+  6. **文档更正**：`docs/current-state.md`（头部状态块 + §三 待执行项：阶段 7 开工、批 0 完成、分批方案与决策 BF–BO 落档）、`docs/collaboration-log.md`（头部"最后更新" + 阶段索引第 7 行改为"进行中"）、`README.md`（顶部状态块）；
+  7. **决策点确认**：BF 范围（7 项）／BG 无限滚动采用"累积加载 + `?page`=已加载页数 + 滚动时 `replace`"／BH 拆包只改动态 import（不改高亮行为）／BI 回到顶部全站挂载／BJ 进度条为页头底部细条／BK 窄屏目录为折叠面板／BL 主色取 `#3563e0`（13 张 SVG 插画不改）／BM 用 `defineExpose({ clearStatus })`／BN 不重置数据库／BO 每批停下等确认 —— **均经作者确认**。
+- 改动文件：`README.md`、`docs/{current-state,collaboration-log,ai-log}.md`（**均为完整文档**，无占位文件）；新增临时程序 `backend/target/tmp-check/DbCheck.java`（**在 `.gitignore` 覆盖的 `target/` 内，不提交**）；**无前端 / 后端业务代码改动**。
+- 验证命令与结果（均为实测输出）：见第 2–5 点；关键原文 —— `Started BlogApplication in 1.701 seconds`、`VITE v8.3.0  ready in 349 ms`、`✓ 151 modules transformed.` / `✓ built in 252ms`、`全部通过：97/97 项断言`、`COUNT article = 12` … `COUNT like_record = 0`。**注**：临时直连会话查到的 `PRAGMA busy_timeout = 3000` 是该连接自身的默认值，应用连接由 JDBC URL 设定 5000（`backend/src/main/resources/application.yml:11`），**非回归**。
+- 遗留问题：阶段 7 计划闭环 18（骨架屏时机抓拍，批 3）、20 / 27（详情页拆包，批 2）、22（窄屏目录入口，批 4）、23（进度条 + 回到顶部，批 1）、29 / 30（批 5）；其余（8 / 9 / 16 / 19 / 25 / 26 等）按原计划留在阶段 8 / 阶段 9 或作为演示级语义保留。
+- 下一步：**批 1 —— 详情页 A：阅读进度条 + 回到顶部**（新增 `frontend/src/components/ReadingProgress.vue`、`frontend/src/components/BackToTop.vue`；修改 `frontend/src/views/ArticleDetailView.vue`、`frontend/src/App.vue`、`frontend/src/styles/base.css`），做完停下等作者确认。
