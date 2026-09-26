@@ -31,6 +31,13 @@ const routes = [
     meta: { title: '关于' }
   },
   {
+    // 隐藏入口（阶段 8 批 7，决策 BR）：写作台，不在导航栏暴露；演示级无鉴权，页面内已标注
+    path: '/studio',
+    name: 'studio',
+    component: () => import('@/views/StudioView.vue'),
+    meta: { title: '写作台' }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),

@@ -905,3 +905,17 @@
 - 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 242ms`（`ArticleDetailView 22.87 kB │ gzip 8.01 kB`）；`npm run smoke` → `全部通过：143/143 项断言`；浏览器 6 项见第 5 点。
 - 遗留问题：**闭环遗留 19 的前端部分（详情页上下篇渲染）**；如实登记两处工具现象：① 新标签首次打开时主区一度为空，**重载后正常**（判定为 Vite HMR 中间态，非代码缺陷）；② `page.visual.snapshot` 偶发 `PAGE_NOT_READY`，重试即成功（工具抖动，非项目缺陷）。
 - 下一步：**批 7 —— 极简管理入口 `/studio`**（决策 BR：隐藏路由；文章新建 / 编辑 / 删除 + `PUBLISHED/DRAFT` 切换 + 标签管理；Markdown 文本框、不做富文本、不做登录，页面标注演示级无鉴权），做完停下等作者确认。
+
+### 阶段 8：功能迭代二（批 7：写作台 /studio —— 隐藏管理入口）
+- 我的提示词摘要："**批 6 通过，请继续**"（作者确认批 6 并授权批 7）。
+- AI 做了什么：
+  1. **新增 `frontend/src/views/StudioView.vue`**（完整）：文章区（列表含 `PUBLISHED/DRAFT` 徽标、更新时间与「编辑 / 转草稿·发布 / 删除」操作；新建与编辑共用表单 —— 标题、状态、标签（逗号分隔、≤5 个）、摘要、封面、Markdown 正文；**编辑前先取详情预填、在取回前禁用保存**，避免把空正文写回；删除与标签删除都走行内二次确认）+ 标签区（新建 / 行内改名 / 删除）；成功操作走 Toast、失败给出行内或 Toast 错误；页首明确标注**演示级无鉴权**；
+  2. **`frontend/src/api/articles.js`**：补 `createArticle` / `updateArticle`（PUT 全量语义；`tags` 空数组 = 清空）/ `deleteArticle`；**`frontend/src/api/tags.js`**：补 `createTag` / `renameTag` / `deleteTag`（并补 `ApiError` 引入、头注释扩到 4.17 节）；
+  3. **路由**：新增 `/studio`（`meta.title = 写作台`，**不出现在导航栏**）；
+  4. **构建**：`npm run build` → **265ms**；`StudioView` 独立 chunk **11.91 kB**（gzip 3.89 kB，懒加载，其他页面零影响）；
+  5. **真实浏览器实测（8 步）**：① `/studio` 渲染：写作台 + 演示级提示 + **12 篇文章**（徽标 / 更新时间 / 三个操作按钮）+ **8 个标签**；② **新建文章**（标题 + Markdown 正文）→ 接口复核 `id=51`、`status=PUBLISHED`、`summary` 自动取正文；③ **转草稿** → 接口复核 `status=DRAFT`；④ **发布** → 恢复；⑤ **删除**（行内二次确认）→ 文章总数回到 **12**；⑥ **新建标签** → 接口复核 `id=16`；⑦ **行内改名** → 接口复核新名称；⑧ **删除标签** → 标签回到 **8**；截图归档 `docs/demo/stage8-04-studio.png`；
+  6. **数据终核**：`article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0`、`journal_mode=wal`；`npm run smoke` 复跑 **143/143**（后端零改动）。
+- 改动文件：新增（**完整**）`frontend/src/views/StudioView.vue`；修改（**完整**）`frontend/src/router/index.js`、`frontend/src/api/articles.js`、`frontend/src/api/tags.js`；新增截图 `docs/demo/stage8-04-studio.png`；文档 `README.md`（状态行 + 访问地址表补写作台、并修正过时的「Swagger 待实现」行）、`docs/{current-state,collaboration-log,ai-log}.md`。**未新增依赖、未改契约、未改后端**。
+- 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 265ms`（`StudioView 11.91 kB │ gzip 3.89 kB`）；`npm run smoke` → `全部通过：143/143 项断言`；浏览器 8 步见第 5 点。
+- 遗留问题：无新增；**如实说明**：写作台是**演示级隐藏入口（无鉴权）**，已在页面内与 README 标注，阶段 9 审计将复核。
+- 下一步：**批 8 —— 收尾与回归**（全量 `build` / `smoke` 终测；遗留问题逐条收口（含 `current-state.md` §五 的 33 条与"未覆盖项"刷新）；文档同步 + `current-state.md` 整份覆盖 + **验收清单**（验收结论由作者签）；`docs/demo` 截图归档），做完停下等作者。

@@ -66,3 +66,51 @@ export async function postArticleView(id) {
   }
   return request(`/articles/${value}/views`, { method: 'POST' })
 }
+
+/** 校验文章 ID（写作台的写接口共用）。 */
+function assertArticleId(id) {
+  const value = Number(id)
+  if (!Number.isInteger(value) || value < 1) {
+    throw new ApiError(`文章 ID 不合法：${id}`)
+  }
+  return value
+}
+
+/**
+ * 创建文章：POST /api/articles（阶段 8 批 7，写作台 /studio）
+ * @param {{title: string, content: string, summary?: string, coverUrl?: string, status?: 'PUBLISHED'|'DRAFT', tags?: string[]}} payload
+ *   summary / coverUrl 留空不提交；tags 最多 5 个（不存在的标签由后端自动创建）
+ * @returns {Promise<object>} 创建出来的 ArticleSummary
+ */
+export async function createArticle(payload) {
+  const body = { title: payload.title, content: payload.content, status: payload.status || 'PUBLISHED' }
+  if (payload.summary) body.summary = payload.summary
+  if (payload.coverUrl) body.coverUrl = payload.coverUrl
+  if (Array.isArray(payload.tags) && payload.tags.length > 0) body.tags = payload.tags
+  return request('/articles', { method: 'POST', body })
+}
+
+/**
+ * 更新文章：PUT /api/articles/{id}（**全量语义**：title / content / status 必填；
+ * tags 传空数组表示清空标签）
+ * @returns {Promise<object>} 更新后的 ArticleSummary
+ */
+export async function updateArticle(id, payload) {
+  const body = {
+    title: payload.title,
+    content: payload.content,
+    status: payload.status || 'PUBLISHED',
+    tags: Array.isArray(payload.tags) ? payload.tags : []
+  }
+  if (payload.summary) body.summary = payload.summary
+  if (payload.coverUrl) body.coverUrl = payload.coverUrl
+  return request(`/articles/${assertArticleId(id)}`, { method: 'PUT', body })
+}
+
+/**
+ * 删除文章：DELETE /api/articles/{id}（级联删除评论与点赞；标签本身保留）
+ * @returns {Promise<null>}
+ */
+export async function deleteArticle(id) {
+  return request(`/articles/${assertArticleId(id)}`, { method: 'DELETE' })
+}
