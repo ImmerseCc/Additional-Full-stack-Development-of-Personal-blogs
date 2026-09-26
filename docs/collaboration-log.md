@@ -273,3 +273,31 @@
 - **验证命令与结果**（均为实测输出）：`npm run build` → 229 → 242 → 265 → **258ms**；`npm run smoke` → 97 → 112 → 123 → 137 → **143/143**；后端每批 `./mvnw -B -ntp compile` → `BUILD SUCCESS`；数据全程复核 `12 / 8 / 23 / 0 / 0`；`journal_mode=wal`；Swagger 操作数 **20**；浏览器累计 **14 项**实测（批 6 六项 + 批 7 八步）。
 - **遗留问题**：见 `docs/current-state.md` 第五节 —— 本阶段**闭环 9（WAL）/ 19（上下篇）/ 28（`40009`）**，20 的注记更新（shell **22.92 kB**）；"未覆盖项"清零（`40009` / `50000` / `50001` / `SQLITE_BUSY` 均有真实触发记录）；新增 2 条工具类观察项（Vite HMR 中间态 / 截图 `PAGE_NOT_READY`，均非项目缺陷）。
 - **下一步**：**阶段 8 已由作者人工验收通过（2026-09-26）**；下一阶段 = **阶段 9（报错记录整理 + 前后端专项审计 + 交付文档与演示脚本）** —— 作者按惯例新开会话下达开工指令后，AI 先出分批方案与决策点。
+
+### 阶段 9：报错记录整理 + 前后端专项审计 + 交付文档与演示脚本（批 0–批 6，**作者已人工验收通过**）
+
+- **验收结论（作者，2026-09-26）**：交付的 **13 条验收清单逐条通过** —— 作者结论"**ok，验收通过**"；本阶段**无返工项**。验收后按惯例完成本记录与 `docs/current-state.md` 的收尾覆盖（阶段 0–9 的最后一个阶段）。
+- **我的提示词摘要**：
+  - 新会话开场要求"**先不要写代码**"，先读 `AGENTS.md`、`README.md` 与 4 份 docs 后用**不超过 10 行**总结现状（技术栈 / 已完成阶段 / 当前目标 / 下一步 / 禁止事项与遗留）；
+  - 随后"**请继续，分批列出需要的事项**"：AI 给出 **批 0–批 6 方案 + 决策 BY–CG（9 条）**；
+  - **开工前追加**："在批 0 之前，我需要对已经完成的项目功能是否达标进行验收" —— 给出前端 6 模块 + 加分项、后端 6 项 + 7 项加分项的**逐条自检清单**（这是"项目审计提示词"的原始形态）；
+  - 批复："**2 不必了，其他均同意，请继续**"（重启持久化演练不做；3 处小差异纳入批 2；虚拟列表保持"主动不做"、GitHub 托管只登记）；
+  - 逐批确认："**批0通过，请继续**" → "**批1通过，请继续**" → "**批 3 开始**" → "**批 4 开始**" → "**批 5 开始**" → "**批 6 开始**" → "**ok，验收通过**"；
+  - **说明**：**关键提示词 #6（项目审计）在本阶段真实发生并补写**（此前一直标注"待发生"，未提前编造）。
+- **AI 做了什么（按批）**：
+  1. **批 0（开工基线）**：只读探测（git / 端口 / 工具链）→ 基线采集（构建 **274ms**、`smoke` **143/143**、数据 `12 / 8 / 23 / 0 / 0`、6 表 8 索引、`journal_mode=wal`）→ 决策 BY–CG 与分批方案入档；提交 `97b3ee2`；
+  2. **批 1（正式审计 A · 静态层，只读）**：逐文件核对 `frontend/src/**`（48 文件）与 `backend/src/main/java/**`（41 类）—— **第 7 / 11 / 12 项通过**；发现 **2 处重复实现**（滚动+rAF 范式 ×3、`blankToNull` ×2）、**2 处死代码残留**（`config/.gitkeep`、`ApiError#isValidationError`）、**3 处校验口径差异**；报告新增整章（含 CSS 误报澄清、局限登记、2 条可复制验证）；提交 `d611e9e`；
+  3. **批 2（审计问题修复，9 项）**：抽 `frontend/src/utils/scrollFrame.js`；新增 `backend/.../common/Texts.java`；删 `config/.gitkeep` 与零引用 getter；**邮箱口径前后端统一为同一条正则** + ≤100 字；文章表单补 `LIMITS`；评论错误提示加淡入动画；Toast 补 `warning` 类型（写作台"转草稿"真实使用）；**遗留 32 闭环** —— 演练中发现 **`<Suspense>` 会吞掉异步组件加载期异常**（正文区静默空白），改为 `loadingComponent` / `errorComponent` 两态并三态复验；`smoke` 143 → **145**；提交 `cc2699d`；
+  4. **批 3（正式审计 B · 运行时层）**：**只按 README** 从零启动（后端 `Started in 1.923s`、前端 `VITE ready in 342ms`）；前端六模块浏览器走查；后端六项（列表分页字段与契约一致 / `keyword` / 多标签 / `prev` / `next`）；响应式 **375 / 768 / 1280**；**对比度 12 组按 WCAG 实算全部达标**；前后端双层校验；**并发演练**（锁内写等待 **5.085s → `50001`**、锁内读 **4.8ms → 200**）；12 项清单填满 + 6 张截图；提交 `79a3e79`；
+  5. **批 4（演示脚本与素材）**：新增 `docs/demo/README.md`（**12 个演示点**：操作 / 命令 / 预期 / 截图编号 + **39 张素材索引** + 注意事项），补首页与 Swagger 两张截图，删除失效的 `docs/demo/.gitkeep`；提交 `2dcd930`；
+  6. **批 5（交付文档整理）**：补写**关键提示词 #6（项目审计）**并与汇总表同步；`debug-log.md` 新增 **10 条索引表**；`audit-report.md` 头部定稿；`main-prompt.md` 追加「**四、阶段 9 的交付指令（原文照录）**」；README 与 AGENTS 文档索引刷新；提交 `e365eda`；
+  7. **批 6（收尾与验收清单）**：终测 `npm run build` → **300ms**、`npm run smoke` → **145/145**；`view_count` 复位（非零行 **0**）；`DbCheck` 终核 `12 / 8 / 23 / 0 / 0` + 6 表 8 索引 + `journal_mode=wal`；**13 条验收清单**写入 `current-state.md` §一；提交 `76d875a`；
+  8. **验收与收尾**：作者逐条确认通过 → 补写本记录 + 收尾 `docs/current-state.md`（阶段 0–9 全部完成）。
+- **改动文件**：
+  - 业务代码（仅批 2）：新增 `frontend/src/utils/scrollFrame.js`、`frontend/src/components/MarkdownBodySkeleton.vue`、`frontend/src/components/MarkdownLoadError.vue`、`backend/src/main/java/com/example/blog/common/Texts.java`；修改 `frontend/src/{utils/scrollSpy.js,utils/validate.js,api/error.js,stores/toast.js,components/{BackToTop,ReadingProgress,ToastStack,CommentForm}.vue,views/{ArticleDetailView,StudioView}.vue}`、`frontend/scripts/smoke.mjs`、`backend/.../{model/CommentCreateRequest.java,service/ArticleService.java,service/CommentService.java}`；删除 `backend/src/main/java/com/example/blog/config/.gitkeep`；
+  - 文档：`README.md`、`AGENTS.md`、`docs/{current-state,api-contract（未改语义）,audit-report,debug-log,collaboration-log,ai-log,main-prompt}.md`；
+  - 素材：`docs/demo/README.md` + `docs/demo/stage9-01…09-*.png`（9 张），删除 `docs/demo/.gitkeep`。
+  - **未新增任何依赖、未改契约语义**。
+- **验证命令与结果**（均为实测输出）：`npm run build` → 274 → 371 → **300ms**；`npm run smoke` → 143 → **145/145**；`./mvnw -B -ntp compile` → **BUILD SUCCESS（42 个源文件）**；后端按 README 从零启动 → `Started BlogApplication in 1.923 seconds`；浏览器三态复验（管线失败态 / 「刷新页面」动作 / 恢复态）；并发演练 **5.085s → `50001`** / **4.8ms → 200**；数据终核 `12 / 8 / 23 / 0 / 0` + `view_count` 全 0；**作者侧：13 条验收清单逐条通过**。
+- **遗留问题**：见 `docs/current-state.md` 第五节（33 条）。本阶段**闭环 32（异步管线失败态）**；如实登记 2 条工具 / 环境类观察（浏览器面板可用视口上限约 717px、本机 Edge 无头不可用）；**录屏待作者按 `docs/demo/README.md` 完成**。
+- **下一步**：0–9 路线图**全部完成并验收**。后续可选事项（不影响交付）：遗留 18（骨架屏抓拍）、20（详情 chunk 再压缩）、25（重置后旧点赞不可自助撤销）、33（本机记住评论邮箱）等，见 `docs/current-state.md` §五。
