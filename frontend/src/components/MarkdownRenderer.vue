@@ -2,14 +2,25 @@
 // Markdown 渲染组件（阶段 4 批 3）：把契约里的 Markdown 原文交给 utils/markdown.js，
 // 得到已清洗、已高亮、标题带 id 的 HTML 后用 v-html 插入。
 // 注意：v-html 生成的内容拿不到 scoped 的 data 属性，因此本组件用 :deep() 写正文样式。
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, watch } from 'vue'
 import { renderMarkdown } from '@/utils/markdown'
 
 const props = defineProps({
   source: { type: String, default: '' }
 })
 
+// 渲染完成信号（阶段 9 验收后修订，报错记录 12）：
+// 异步管线的"chunk 到位"与"正文挂载"不在同一个 tick，父级只等一个 nextTick 可能读到空的骨架，
+// 于是首次打开时取不到标题、右侧目录永远不出现（不会自愈）。由本组件在内容真正进 DOM 后主动通知。
+const emit = defineEmits(['rendered'])
+
 const html = computed(() => renderMarkdown(props.source))
+
+onMounted(() => emit('rendered'))
+watch(
+  () => props.source,
+  () => nextTick(() => emit('rendered'))
+)
 </script>
 
 <template>

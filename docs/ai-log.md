@@ -1076,3 +1076,15 @@
 - 验证命令与结果（均为实测输出）：见第 4、5 点。
 - 遗留问题：无新增；"滚动到底被弹回顶部"的体验缺陷已闭环。
 - 下一步：请作者在真机 / 浏览器复验该场景（`/articles` 一次滚到底即达底、不再回顶）。
+
+### 阶段 9：**验收后修订（二）**（首次打开文章时右侧目录不出现 —— 真实用户报告，已按根因加固）
+- 我的提示词摘要："**出现问题，在第一次打开文章时右侧目录栏不会出现，而之后再次打开才能出现**"（作者在阶段 9 验收后实测发现）。
+- AI 做了什么：
+  1. **根因分析**：目录只在 `headings.length > 0` 时渲染，而 `headings` 的唯一来源是 `ArticleDetailView.load()` 末尾那一次 `collectHeadings()`（**全生命周期仅一次机会，取不到就不自愈**）；`collectHeadings()` 读的是真实渲染出的 `h2[id]/h3[id]`，但正文是**异步组件** —— `await loadMarkdownRenderer()` 只保证"chunk 到位"，**不保证正文已挂载**（中间还隔着异步组件内部的 `catch → then → finally → loaded=true → 渲染` 若干微任务）。因此那一拍是否踩在渲染之后取决于时序，首次打开（chunk 最冷）最容易被抢在前面，与作者描述吻合；
+  2. **如实登记**：用"人为延迟 800ms"**未能在本机复现**该现象（说明本机时序恰好安全），故本条按"根因加固 + 请作者复验"处理，不谎称"复现复修"；
+  3. **加固（2 文件）**：`components/MarkdownRenderer.vue` 新增 `rendered` 事件（`onMounted` + `source` 变化后 `nextTick` 时 emit，语义"正文已进 DOM"）；`views/ArticleDetailView.vue` 改为 `@rendered="onBodyRendered"` 驱动取目录，`load()` 里的旧时点保留为**兜底**（仅当 `headings` 为空时补取一次）；
+  4. **复验（真实浏览器）**：**全新文档（冷模块图）首次打开** `/articles/2` → 窄屏「本页目录」+ 4 条目正常；**1280 桌面** `/articles/6` → 右侧目录栏 + 4 条目 + 当前项高亮正常；`npm run build` → **289ms**（管线 chunk 281.34 → 281.45 kB）。
+- 改动文件：`frontend/src/components/MarkdownRenderer.vue`、`frontend/src/views/ArticleDetailView.vue`（均为**完整**）；文档 `docs/debug-log.md`（新增报错记录 12 + 索引与计数）、`docs/current-state.md`（头部修订说明）、`docs/collaboration-log.md`（阶段 9 记录补第二条修订）、`docs/ai-log.md`（本条）。
+- 验证命令与结果（均为实测输出）：见第 4 点。
+- 遗留问题：**待作者复验**（若仍可复现，请提供文章 id / 是否刚重启 dev server / 浏览器宽度 / 是否出现整页闪动）。
+- 下一步：等作者复验结论；确认后本条闭环。

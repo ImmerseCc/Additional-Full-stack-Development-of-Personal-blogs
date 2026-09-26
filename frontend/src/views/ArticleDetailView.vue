@@ -84,6 +84,16 @@ function collectHeadings() {
   }))
 }
 
+// 正文渲染完成后取目录（阶段 9 验收后修订，报错记录 12）。
+// 原来只在 load() 里"等一个 nextTick"就取目录：首次打开时异步管线的
+// "chunk 到位"与"正文挂载"不在同一个 tick，可能读到空的骨架 → headings 为空 →
+// 右侧目录整场都不出现（且不会自愈，因为再没有第二次取目录的机会）。
+// 现在改由 MarkdownRenderer 在内容真正进 DOM 后 emit('rendered') 驱动。
+function onBodyRendered() {
+  collectHeadings()
+  measure()
+}
+
 async function load() {
   loading.value = true
   error.value = null
@@ -112,17 +122,19 @@ async function load() {
   // 必须先让 loading 置否、正文真正渲染出来，再去取目录；
   // 否则此时模板还停在加载态的骨架分支，bodyRoot 是 null，目录永远为空（批 4 实测踩到）
   await nextTick()
-  // 正文现在是异步组件（决策 BH）：还要等管线 chunk 到位并完成渲染，否则读到的是骨架。
-  // 加载失败 → 正文区由异步组件的 errorComponent（MarkdownLoadError）兜底；
-  // 这里只是不去取目录，也不让整个 load() 抛错（否则会多一条全局错误 Toast）。
+  // 正文是异步组件（决策 BH）：这里只负责把"管线加载失败"的场景吞掉（正文区由 errorComponent 兜底显示），
+  // 目录改由 MarkdownRenderer 的 rendered 事件驱动（见 onBodyRendered）——它一定在正文进 DOM 之后触发；
+  // 下面的兜底只在"事件尚未来得及触发"时补一次（命中与否都是幂等的）。
   try {
     await loadMarkdownRenderer()
   } catch (caught) {
     return
   }
   await nextTick()
-  collectHeadings()
-  measure()
+  if (!headings.value.length) {
+    collectHeadings()
+    measure()
+  }
 }
 
 onMounted(load)
@@ -209,7 +221,7 @@ onMounted(load)
           </details>
 
           <div ref="bodyRoot" v-reveal="{ delay: 120 }" class="detail__body">
-            <MarkdownRenderer :source="article.content" />
+            <MarkdownRenderer :source="article.content" @rendered="onBodyRendered" />
           </div>
 
           <ReadingProgress />
