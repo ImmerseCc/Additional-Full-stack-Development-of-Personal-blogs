@@ -945,3 +945,16 @@
 - 验证命令与结果：本轮为文档轮，**未运行新的构建 / 接口命令**；沿用批 8 的实测值（`npm run build` **258ms**、`npm run smoke` **143/143**、数据 `12 / 8 / 23 / 0 / 0`）。
 - 遗留问题：见 `docs/current-state.md` 第五节（共 33 条；阶段 8 闭环 9 / 19 / 28）。
 - 下一步：**阶段 9（报错记录整理 + 前后端专项审计 + 交付文档与演示脚本）** —— 作者新开会话后，AI 先出分批方案与决策点。
+
+### 阶段 9：报错记录整理 + 前后端专项审计 + 交付文档与演示脚本（批 0：开工基线）
+- 我的提示词摘要："**先不要写代码**，先读 `AGENTS.md` 与 5 份文档后用不超过 10 行总结现状" → "**请继续，分批列出需要的事项**"（AI 给出批 0–批 6 方案与决策点 BY–CG）→ 阶段 9 开工前先做"**功能是否达标**"自检（前端 6 模块 + 加分项 / 后端 6 项 + 加分项）→ 作者批复"**2 不必了，其他均同意，请继续**"（重启演练不做，其余全部同意）。
+- AI 做了什么：
+  1. **只读核对**：git 工作区干净、HEAD `486ebea`、分支 `main`；8080（PID 28052）与 5173（PID 5124）均在监听；工具链 Node 24.21.0 / npm 11.19.0 / JDK 26.0.2.1；`backend/target/tmp-check/` 历史临时程序仍在（gitignore 内，不提交）；
+  2. **基线采集（实测输出）**：`npm run build` → `✓ built in 274ms`（`index-*.js 57.06 kB │ gzip 22.91 kB`、`ArticleDetailView 22.92 kB`、`MarkdownRenderer 281.34 kB`、`StudioView 11.91 kB` 各自独立 chunk）；`npm run smoke` → **全部通过：143/143 项断言**（跑完自动清理，数据回种子状态）；
+  3. **数据库只读复核（临时程序 `DbCheck.java`，未提交）**：`article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0`；**6 张表（5 业务表 + `sqlite_sequence`）＋ 8 个索引（5 显式 `idx_*` + 3 自动索引）**；`journal_mode=wal`；`ARTICLE_STATUS PUBLISHED = 12`。附注：该独立连接的 `busy_timeout` 显示 **3000**，是 sqlite-jdbc 裸连接默认值；**应用连接由 JDBC URL 设为 5000**（`application.yml`），两者不冲突；
+  4. **功能达标自检**（问答轮，逐文件取证 + 真跑命令）：前端 6 个核心模块（导航主题 / 列表 / 详情 / 搜索过滤 / 评论点赞 / 本地持久化）与加分项、后端 6 项最低功能与 7 项加分项，结论**逐条达标**；如实登记 3 处差异 —— ① 虚拟列表**主动不做**（`README.md` 记录理由）；② **未托管 GitHub / 服务器**（本机 `github.com` 不可达，见报错记录 1）；③ 评论错误提示**无专用动画**、Toast **无独立 `warning` 类型**（后两项经作者确认纳入批 2）；
+  5. **文档更正**：`docs/current-state.md`（头部 + §零 进度 + §二 已完成表与**决策 BY–CG** + §三 阶段 9 分批方案 + §四 阶段 9 批 0 行 + §六 基线）；`docs/collaboration-log.md`（头部 + 阶段索引第 9 行）；`README.md` 顶部状态块。
+- 改动文件：`docs/current-state.md`、`docs/collaboration-log.md`、`docs/ai-log.md`、`README.md`（均为**完整文档**，无占位）；**无业务代码改动、无新增依赖、未改契约**。
+- 验证命令与结果（均为实测输出）：见第 2、3 点；`npm run build` → 274ms；`npm run smoke` → 143/143。
+- 遗留问题：见 `docs/current-state.md` 第五节（共 33 条；批 0 **无新增、无闭环**）。
+- 下一步：**批 1 —— 正式审计 A · 静态层（只读）**：逐文件阅读 `frontend/src/**`（48 文件）与 `backend/src/main/java/**`（41 个 `.java`），核对审计清单第 7 / 9 / 10 / 11 / 12 项 + 第 6 项规则对账，产出「第 1 次审计 · A 静态层」问题清单；**本批不改业务代码**，做完停下等作者确认。
