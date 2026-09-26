@@ -995,3 +995,20 @@
 - 验证命令与结果（均为实测输出）：`./mvnw -B -ntp compile` → BUILD SUCCESS；`npm run build` → **371ms**（共享 chunk `70.44 → 65.48 kB`，gzip `27.31 → 25.68 kB`）；`npm run smoke` → **全部通过：145/145 项断言**（新增 2 条邮箱口径断言）；后端按新代码重启后 `GET /api/health` → 200；浏览器三态复验见上。
 - 遗留问题：**闭环遗留 32**；`current-state.md` §五 的 18（骨架屏出现时机抓拍）仍留（本机请求过快），另在 §五 登记 1 条新观察（Suspense 吞异常的教训已转成报错记录 10）。
 - 下一步：**批 3 —— 正式审计 B · 运行时层**：严格按 README 启动、前端六模块逐项、后端六项最低功能（含"重启后数据仍在"的历史实测引用）、响应式 375 / 768 / 1280、深色对比度、前后端双层校验实测、数据稳定性（含 `SQLITE_BUSY`）；产出审计报告「B 运行时层」章节 + `stage9-*` 截图；做完停下等作者确认。
+
+### 阶段 9：报错记录整理 + 前后端专项审计 + 交付文档与演示脚本（批 3：正式审计 B · 运行时层）
+- 我的提示词摘要："**批 3 开始**"（作者授权批 3 —— 审计清单第 1–6、8 项的**运行时**验证：README 启动 / 前端六模块 / 后端六项 / 响应式 / 对比度 / 双层校验 / 数据稳定性）。
+- AI 做了什么（逐项实测，证据如下）：
+  1. **第 1 项 按 README 启动 ✅**：先停掉两端（8080 PID 36548、5173 PID 5124）并确认端口释放 → **逐字按 README** 执行 `./mvnw spring-boot:run` 与 `npm install --no-fund --no-audit && npm run dev` → 后端 `Starting BlogApplication using Java 26.0.2.1 with PID 39716`、`Tomcat started on port 8080`、**`Started BlogApplication in 1.923 seconds`**；前端 `up to date in 647ms`、**`VITE v8.3.0 ready in 342 ms`**；`/api/health` 200、Vite 代理 `/api/health` 200；
+  2. **第 2 项 前端六模块 ✅**（真实浏览器走查）：导航栏当前页 `aria-current` 与主题三态（亮 → 暗 → 跟随系统 → 亮，标题同步）；列表页「共 12 篇文章」+ 卡片 + 无限滚动累积到「**已经到底了 · 共 12 篇**」；详情页 Markdown 渲染 + 代码高亮 + 目录（桌面右侧固定「目录」/ 窄屏「本页目录」折叠）+ 上下篇 + 阅读数；搜索 `zzzz` + 标签 → 「**筛选出 0 篇文章**」+ 插画 + 「清除筛选」；评论：空提交 → 行内红字「**评论内容不能为空**」→ 填入内容发表 → 「评论已发表」+ 计数 1 → 归属删除（行内二次确认）→ 回到空态；点赞：点击 → 「已点赞 1」→ **整页刷新后仍为「已点赞 1」** → 取消 → 服务端 `likeCount=0`；`/about` 本地数据面板列出 6 个 `blog:` 键（主题=暗色、`likedArticles` 0 篇、`myComments` 0 条…）+ 重置按钮；
+  3. **第 3 项 后端六项 ✅**：列表（`total=12 / page=1 / size=20 / totalPages=1`，字段 `id,title,summary,coverUrl,status,tags,likeCount,commentCount,viewCount,createdAt,updatedAt` 与契约一致）、`keyword=SQLite → 3`、`tags=前端,Vue&tagMode=or → 5`、详情（含 `prev=5 / next=7`）、创建 / 修改 / 删除由 `smoke` **145/145** 覆盖；**"重启后数据仍在"按作者决定沿用历史实测**（阶段 2 重启实测、阶段 4 幂等双启、阶段 8 终核）；
+  4. **第 4 项 响应式 ✅**：375×667（汉堡菜单 + 单列 + 无横向溢出）、768×1024（桌面导航 + 「本页目录」折叠）、1280×800（桌面导航 + 右侧固定目录，当前项高亮）—— 截图 `stage9-05` / `stage9-07` / `stage9-06`；
+  5. **第 5 项 深色对比度 ✅**：node 按 WCAG 相对亮度公式实算 12 组关键配色**全部达标** —— 暗色（正文/卡片 15.20 / 13.24、次要 7.31 / 6.36、链接 6.68 / 5.82、点赞 6.38、按钮 6.87→5.23）与亮色（正文 15.80、次要 5.25、主色 5.23、点赞 4.62，阈值 4.5 / 点赞 3.0）；
+  6. **第 6 项 双层校验 ✅**：前端（空内容 → 行内红字）与后端（非法 `visitorId` → `40001` + 字段级 `data.fields.visitorId`）均有实测；邮箱口径（含点 / ≤100 字）由批 2 新增的 2 条 `smoke` 断言覆盖；
+  7. **第 8 项 数据稳定性 ✅**：点赞 / 评论 / 主题在刷新与跨路由后均保持；**并发演练**——用外部写者（`backend/target/tmp-check/BusyHolder.java`）持写锁 8 秒：锁内 `POST /api/articles/2/views` **等待 5.085s → HTTP 500 / code 50001**（busy_timeout=5000 生效）、锁内 `GET /api/articles` **4.8ms → 200**；`journal_mode=wal`、`busy_timeout=5000`（应用连接）；
+  8. **截图归档 6 张**：`docs/demo/stage9-02-list-page.png`、`stage9-03-empty-filter.png`、`stage9-04-dark-detail.png`、`stage9-05-responsive-375.png`、`stage9-06-desktop-toc.png`、`stage9-07-responsive-768.png`（`stage9-01` 为批 2 的失败态）；
+  9. **写入审计报告**：`docs/audit-report.md` 新增「第 1 次审计 · B 运行时层」章节（§1–§7 + 三类分流）、12 项清单「结论」列**全部填满**、「历次审计」表补 B 行。
+- 改动文件：`docs/audit-report.md`、`docs/current-state.md`、`README.md`、`docs/ai-log.md`（均为**完整文档**）；新增截图 `docs/demo/stage9-02…07-*.png`（6 张）。**本轮无业务代码改动、未新增依赖。**
+- 验证命令与结果（均为实测输出）：见第 1–7 点；`npm run smoke` → **145/145**；`npm run build` → 371ms（批 2 终测）。
+- 遗留问题：见 `docs/current-state.md` 第五节（33 条不变）；**如实登记两项工具限制**：① 骨架屏出现时机仍未抓拍到（遗留 18，本机请求约 10ms）；② 浏览器面板可用视口上限约 717px，**1280 档用「固定缩放 + responsive」模式完成**（`viewport` 字段显示为缩放后的预览尺寸，DOM 侧以「右侧固定目录」证明已是桌面布局）。
+- 下一步：**批 4 —— 演示脚本与素材**：新增 `docs/demo/README.md`（覆盖主指令 §七·6 的 12 个演示点：前端 首页列表加载 / 进入详情 / 搜索过滤 / 点赞评论 / 深色切换 / 刷新保留；后端 启动 / 创建 / 列表 / 修改 / 删除 / 重启后在），逐步写"操作 + 命令 + 预期 + 截图编号"，整理素材索引；录屏由作者按脚本自行完成；做完停下等作者确认。
