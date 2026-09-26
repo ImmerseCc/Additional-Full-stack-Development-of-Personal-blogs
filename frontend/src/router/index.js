@@ -49,7 +49,14 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
   scrollBehavior(to, from, savedPosition) {
-    return savedPosition || { top: 0 }
+    // 浏览器前进 / 后退：恢复原位置
+    if (savedPosition) return savedPosition
+    // 同路径、仅查询串变化的导航不算"翻到新页面" —— 例如列表页滚动到底追加数据时，
+    // 用 replace 同步 ?page=2；若照旧返回 { top: 0 }，会把正在向下浏览的用户直接弹回顶部
+    // （阶段 9 验收后实测复现，见 docs/debug-log.md 报错记录 11）。
+    // 返回 false 表示"不处理滚动"，保持当前位置。
+    if (to.path === from.path) return false
+    return { top: 0 }
   }
 })
 

@@ -1063,3 +1063,16 @@
 - 验证命令与结果：本轮为文档轮，**未运行新的构建 / 接口命令**；沿用批 6 终测（`npm run build` **300ms**、`npm run smoke` **145/145**、数据 `12 / 8 / 23 / 0 / 0` 且 `view_count` 非零行 0、后端 PID 39716 / 前端 PID 38320 在运行）。
 - 遗留问题：见 `docs/current-state.md` 第五节（33 条；本阶段闭环 32）；**录屏待作者完成**（脚本见 `docs/demo/README.md`）。
 - 下一步：**项目 0–9 路线图全部完成并通过验收**；如继续迭代，可选遗留项（18 / 20 / 25 / 33 等）与新增需求由作者决定。
+
+### 阶段 9：**验收后修订**（列表页滚动到底被弹回顶部 —— 真实用户报告，已修复）
+- 我的提示词摘要："**存在问题，当在文章页向下滚动到底部时，会再次跳转到顶部，重复一次后才会真正到达底部**"（作者在阶段 9 验收后实测发现并报告）。
+- AI 做了什么：
+  1. **复现与定位**：先排除详情页（`/articles/2` 按 `End` 一次直达底部、正常）→ 锁定**列表页**；全仓搜滚动相关 API 后定位到 `frontend/src/router/index.js` 的 `scrollBehavior`；
+  2. **根因**：`ArticlesView.load()` 每次追加 / 收敛页数都会 `syncQuery({ page: limit }, { replace: true })`（`ArticlesView.vue:140`）—— **`router.replace` 同样触发 `scrollBehavior`**，而原实现 `return savedPosition || { top: 0 }` 在滚动追加时没有 `savedPosition`，于是把页面拉回顶部；第 2 页加载后已无更多页 → 不再 replace → 第二次滚动才到得了底（与作者描述完全一致）；
+  3. **修复**（1 处，`frontend/src/router/index.js`）：`scrollBehavior` 增加"**同路径、仅查询串变化 → 返回 `false`（不处理滚动）**"分支；跨路径导航仍回 `{ top: 0 }`；前进 / 后退仍优先 `savedPosition`；
+  4. **复验（真实浏览器）**：`/articles` 按 `End` 一次 → 地址栏变 `?page=2` 且**视口停在底部**（未回顶）；从该滚动位置点卡片进 `/articles/3` → **详情页停在顶部**（跨路径行为未被破坏）；
+  5. **回归与数据**：`npm run build` → **336ms**；`npm run smoke` → **145/145**；复验后再次把 `view_count` 复位为 0（终核 `12 / 8 / 23 / 0 / 0`、`journal_mode=wal`）。
+- 改动文件：`frontend/src/router/index.js`（**完整**，`scrollBehavior` 一处改动）；文档 `docs/debug-log.md`（新增报错记录 11 + 索引与计数）、`docs/current-state.md`（头部"验收后修订"说明）、`docs/collaboration-log.md`（阶段 9 记录补"验收后修订"）、`docs/ai-log.md`（本条）。
+- 验证命令与结果（均为实测输出）：见第 4、5 点。
+- 遗留问题：无新增；"滚动到底被弹回顶部"的体验缺陷已闭环。
+- 下一步：请作者在真机 / 浏览器复验该场景（`/articles` 一次滚到底即达底、不再回顶）。
