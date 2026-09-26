@@ -10,12 +10,14 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 标签业务层：列表查询 + 保存文章时的标签解析与自动创建（契约 §四 · 4「不存在的标签自动创建」）。
+ * 标签业务层（契约 §四 · 4、7、17）：列表查询、保存文章时的标签解析与自动创建、标签管理（新建 / 改名 / 删除）。
  *
- * <p>标签增删改（管理接口）属阶段 8 可选项，阶段 2 不实现。
+ * <p>重名一律返回 40009（资源冲突）；新建 / 改名 / 删除都带事务边界。
  */
 @Service
 public class TagService {
@@ -31,6 +33,51 @@ public class TagService {
     /** 标签列表，按关联文章数倒序（前端模块四的标签过滤器数据源）。 */
     public List<TagVO> listTags() {
         return tagRepository.findAllWithArticleCount();
+    }
+
+    /**
+     * 新建标签（契约 §四 · 17）：名称 1-20 字（DTO 已校验）；重名返回 40009。
+     *
+     * <p>并发下仍有极小概率撞上 {@code tag.name} 的 UNIQUE 约束，此时把数据库异常翻译成同一个 40009。
+     */
+    @Transactional
+    public TagVO createTag(String name) {
+        String trimmed = name.trim();
+        if (tagRepository.findByName(trimmed).isPresent()) {
+            throw new BizException(ErrorCode.CONFLICT, "标签名已存在：" + trimmed);
+        }
+        Tag tag = new Tag();
+        tag.setName(trimmed);
+        tag.setCreatedAt(TimeFormats.parse(TimeFormats.now()));
+        try {
+            long id = tagRepository.insert(tag);
+            return new TagVO(id, trimmed, 0);
+        } catch (DuplicateKeyException ex) {
+            throw new BizException(ErrorCode.CONFLICT, "标签名已存在：" + trimmed);
+        }
+    }
+
+    /** 标签改名（契约 §四 · 17）：标签不存在 40004；名称与他人重复 40009（改成自己原名不算冲突）。 */
+    @Transactional
+    public TagVO renameTag(long id, String name) {
+        TagVO current = tagRepository.findVoById(id)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "标签不存在：id=" + id));
+        String trimmed = name.trim();
+        tagRepository.findByName(trimmed)
+                .filter(tag -> !tag.getId().equals(id))
+                .ifPresent(tag -> {
+                    throw new BizException(ErrorCode.CONFLICT, "标签名已存在：" + trimmed);
+                });
+        tagRepository.rename(id, trimmed);
+        return new TagVO(id, trimmed, current.articleCount());
+    }
+
+    /** 删除标签（契约 §四 · 17）：article_tag 由外键级联解除；标签不存在 40004。 */
+    @Transactional
+    public void deleteTag(long id) {
+        if (tagRepository.deleteById(id) == 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, "标签不存在：id=" + id);
+        }
     }
 
     /**

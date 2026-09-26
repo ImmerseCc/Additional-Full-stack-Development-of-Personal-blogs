@@ -13,9 +13,8 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 /**
- * 标签数据访问层：列表查询 + 供"标签自动创建"使用的最小写方法。
- *
- * <p>标签管理接口（改名 / 删除）属阶段 8 可选项，阶段 2 不实现。
+ * 标签数据访问层（契约 §四 · 7、17）：列表查询、文章保存时的"按名取 / 自动创建"，以及
+ * 标签管理（新建 / 改名 / 删除）所需的读写。
  */
 @Repository
 public class TagRepository {
@@ -73,5 +72,29 @@ public class TagRepository {
             throw new IllegalStateException("插入标签后未取到自增主键");
         }
         return key.longValue();
+    }
+
+    /** 按 id 取标签响应体（含实时 articleCount），供新建 / 改名回读使用。 */
+    public Optional<TagVO> findVoById(long id) {
+        String sql = """
+                SELECT t.id, t.name, COUNT(at.article_id) AS article_count
+                FROM tag t
+                LEFT JOIN article_tag at ON at.tag_id = t.id
+                WHERE t.id = ?
+                GROUP BY t.id, t.name
+                """;
+        List<TagVO> rows = jdbcTemplate.query(sql,
+                (rs, rowNum) -> new TagVO(rs.getLong("id"), rs.getString("name"), rs.getInt("article_count")), id);
+        return rows.stream().findFirst();
+    }
+
+    /** 标签改名，返回受影响行数（0 表示标签不存在）。 */
+    public int rename(long id, String name) {
+        return jdbcTemplate.update("UPDATE tag SET name = ? WHERE id = ?", name, id);
+    }
+
+    /** 删除标签，返回受影响行数（0 表示标签不存在）；article_tag 由外键 ON DELETE CASCADE 解除。 */
+    public int deleteById(long id) {
+        return jdbcTemplate.update("DELETE FROM tag WHERE id = ?", id);
     }
 }

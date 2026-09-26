@@ -862,3 +862,18 @@
 - 验证命令与结果（均为实测输出）：`./mvnw -B -ntp compile` → `BUILD SUCCESS`；`npm run smoke` → `全部通过：123/123 项断言`；手动实测 10 步见第 6 点。
 - 遗留问题：**闭环遗留 19 的后端部分**（前端渲染上下篇留批 6）。
 - 下一步：**批 4 —— 后端：标签管理三接口 + 启用 `40009`**（`TagRepository` 补 insert / rename / delete / existsByName，`TagService` 补 1–20 字校验与重名冲突 → `40009`（闭环遗留 28），`TagController` 补 `POST` / `PUT` / `DELETE /api/tags`，新增 `TagSaveRequest`，smoke 断言扩展），做完停下等作者确认。
+
+### 阶段 8：功能迭代二（批 4：标签管理三接口 + 启用 40009）
+- 我的提示词摘要："**批 3 通过，请继续**"（作者确认批 3 并授权批 4）。
+- AI 做了什么：
+  1. **新增 `TagSaveRequest`**（model）：`name`（必填、≤20 字）；
+  2. **`TagRepository`**：新增 `findVoById(long)`（LEFT JOIN 实时 `articleCount`）、`rename(long, String)`、`deleteById(long)`；类注释改为"契约 §四 · 7、17"；
+  3. **`TagService`**：新增 `createTag` / `renameTag` / `deleteTag`（均带 `@Transactional`）—— 重名一律 **`40009`**（新建先查重；并发撞 UNIQUE 时把 `DuplicateKeyException` 翻译成同样的 40009；改名时"改成自己原名"不算冲突）；标签不存在一律 `40004`；`deleteTag` 依赖外键级联解除 `article_tag`；
+  4. **`TagController`**：新增 `POST /api/tags`（HTTP 201）、`PUT /api/tags/{id}`、`DELETE /api/tags/{id}`，补 `@Operation`；`@Tag` 描述改为"标签列表与标签管理（契约 §四 · 7、17）"；
+  5. **编译**：`./mvnw -B -ntp compile` → **BUILD SUCCESS**；重启后端（`READY after 3s`）；
+  6. **手动实测**（临时脚本 `tag-manual-test.mjs`）：基线 8 / 23 → 新建 201（`articleCount=0`）→ **重名 409/40009（`40009` 首次可达）** → 空名 / 超长 400/40001（带字段级原因）→ 改名撞车 409/40009 → 改名不存在 404/40004 → 改名成功 → 带标签建文（`articleCount=1`）→ 删除标签 200 → **文章的 `tags` 级联解除为 []** → 删除文章 → 删除不存在标签 404/40004 → 复核 8 / 23（全部还原）；
+  7. **`smoke.mjs` 扩展**：新增「§四·17 标签管理」用例组（**14 项断言**），头注释与末尾"契约未覆盖"清单同步（只剩阅读数）；**`npm run smoke` → 全部通过：137/137 项断言**。
+- 改动文件：新增（**完整**）`backend/src/main/java/com/example/blog/model/TagSaveRequest.java`；修改（**完整**）`backend/src/main/java/com/example/blog/repository/TagRepository.java`、`backend/src/main/java/com/example/blog/service/TagService.java`、`backend/src/main/java/com/example/blog/controller/TagController.java`、`frontend/scripts/smoke.mjs`；文档 `README.md`、`docs/{current-state,collaboration-log,ai-log}.md`；临时脚本 `backend/target/tmp-check/tag-manual-test.mjs`（gitignore 内，不提交）。**未新增依赖、未改契约、未改表结构**。
+- 验证命令与结果（均为实测输出）：`./mvnw -B -ntp compile` → `BUILD SUCCESS`；`npm run smoke` → `全部通过：137/137 项断言`；手动实测 12 步见第 6 点。
+- 遗留问题：**闭环遗留 28（`40009` 不可达）**；标签管理的前端入口留批 7（`/studio`，决策 BR）。
+- 下一步：**批 5 —— 后端：阅读数 + WAL + 未覆盖项演练**（决策 BU / BW / BX：新增 `POST /api/articles/{id}/views` 与 `viewCount` 字段、JDBC URL 加 `journal_mode=WAL`、构造 `50000` / `50001` / `SQLITE_BUSY` 演练），做完停下等作者确认。

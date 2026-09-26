@@ -2,7 +2,7 @@
 /**
  * 接口层回归脚本（阶段 6 批 1 · 决策 AW）
  *
- * 用途：把 `docs/api-contract.md`（v1.1）里"已实现"的操作固化成可重复运行的用例（阶段 8 批 2 起含评论单条查询 / 修改），
+ * 用途：把 `docs/api-contract.md`（v1.1）里"已实现"的操作固化成可重复运行的用例（阶段 8 批 2 起含评论单条查询 / 修改，批 3 相邻文章，批 4 标签管理），
  * 覆盖正常路径 + 错误分支（40001 / 40002 / 40004），跑完自动把测试数据清理干净。
  *
  * 用法（零新增依赖，只用 Node 原生 fetch）：
@@ -163,6 +163,47 @@ async function main() {
             && tags.every((t, i) => i === 0 || tags[i - 1].articleCount >= t.articleCount));
         const sum = (tags ?? []).reduce((acc, t) => acc + t.articleCount, 0);
         check('articleCount 合计 = 23（article_tag 关联数）', sum === 23, `实际 ${sum}`);
+    }
+
+    // ── §四·17 标签管理（阶段 8 批 4）─────────────────────────────
+    group('§四·17 标签管理：POST / PUT / DELETE /api/tags');
+    {
+        const create = await api('POST', '/tags', { body: { name: '冒烟临时标签' } });
+        check('新建返回 HTTP 201 且 code=0', create.status === 201 && okBody(create));
+        const tid = create.json?.data?.id ?? null;
+        check('返回 TagVO（articleCount=0）', hasAll(create.json?.data, ['id', 'name', 'articleCount'])
+            && create.json.data.articleCount === 0);
+
+        checkError('重名创建（40009 首次可达，闭环遗留 28）',
+            await api('POST', '/tags', { body: { name: '冒烟临时标签' } }), 409, 40009);
+        checkError('空名称', await api('POST', '/tags', { body: { name: '' } }), 400, 40001);
+        checkError('名称超长（21 字）', await api('POST', '/tags', { body: { name: 'x'.repeat(21) } }), 400, 40001);
+
+        const rename = await api('PUT', `/tags/${tid}`, { body: { name: '冒烟临时标签2' } });
+        check('改名成功 HTTP 200 且返回新名称', rename.status === 200 && okBody(rename)
+            && rename.json?.data?.name === '冒烟临时标签2');
+        checkError('改名撞已有标签（前端）', await api('PUT', `/tags/${tid}`, { body: { name: '前端' } }), 409, 40009);
+        checkError('改名：标签不存在', await api('PUT', '/tags/99999', { body: { name: '任意' } }), 404, 40004);
+
+        const art = await api('POST', '/articles', {
+            body: { title: '【冒烟测试】带标签文章', content: 'x', tags: ['冒烟临时标签2'] },
+        });
+        created.articleId = art.json?.data?.id ?? null;
+        const tagsNow = await api('GET', '/tags');
+        check('新标签出现在列表且 articleCount=1', tagsNow.json?.data?.find((t) => t.id === tid)?.articleCount === 1);
+
+        const delTag = await api('DELETE', `/tags/${tid}`);
+        check('删除标签 HTTP 200、code=0、data 为 null', delTag.status === 200 && okBody(delTag) && delTag.json.data === null);
+        const artAfter = await api('GET', `/articles/${created.articleId}`);
+        check('文章关联被级联解除（tags=[]）', Array.isArray(artAfter.json?.data?.tags) && artAfter.json.data.tags.length === 0);
+        const delArt = await api('DELETE', `/articles/${created.articleId}`);
+        check('清理临时文章', okBody(delArt));
+        if (okBody(delArt)) created.articleId = null;
+
+        checkError('删除不存在的标签', await api('DELETE', '/tags/99999'), 404, 40004);
+        const tagsBack = await api('GET', '/tags');
+        check('标签回到 8 个、合计 23', tagsBack.json?.data?.length === 8
+            && tagsBack.json.data.reduce((acc, t) => acc + t.articleCount, 0) === 23);
     }
 
     // ── §四·8 / 9 / 12 评论 ────────────────────────────────────────
@@ -497,5 +538,5 @@ console.log(`\n${'-'.repeat(60)}`);
 console.log(failures.length === 0
     ? `全部通过：${pass}/${total} 项断言`
     : `失败 ${failures.length} 项 / 共 ${total} 项断言：\n- ${failures.join('\n- ')}`);
-console.log(`契约未覆盖：标签管理接口、POST /api/articles/{id}/views（契约 §四·17/18，阶段 8 批 4–批 5 落地）`);
+console.log(`契约未覆盖：POST /api/articles/{id}/views（契约 §四·18，阶段 8 批 5 落地）`);
 process.exit(failures.length === 0 ? 0 : 1);
