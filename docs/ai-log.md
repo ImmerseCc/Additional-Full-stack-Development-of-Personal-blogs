@@ -1088,3 +1088,22 @@
 - 验证命令与结果（均为实测输出）：见第 4 点。
 - 遗留问题：**待作者复验**（若仍可复现，请提供文章 id / 是否刚重启 dev server / 浏览器宽度 / 是否出现整页闪动）。
 - 下一步：等作者复验结论；确认后本条闭环。
+
+### 阶段 9 · 收尾后：GitHub 推送（**待执行 —— 当前网络不可直推，等作者通知**）
+- 我的提示词摘要："**所有事务均已完成，感谢你，请最后把 git 库同步到 github 上**" → 随后"**在可建联时，我会通知你**"。
+- AI 做了什么（本轮为**只读诊断 + 记录**，未改动任何业务代码）：
+  1. **仓库就绪性核对**：分支 `main`、**74 个提交**、工作区干净、**172 个跟踪文件**、`git count-objects` 打包体积 **352 KiB**（最大跟踪文件 796K，无超大文件），**尚未配置任何 remote**；
+  2. **连通性实测（逐条真实输出）**：
+     - `https://api.github.com` → **HTTP 200（0.38s）✅ 可达**；
+     - `https://github.com` → **HTTP 000（8s 超时）❌**；DNS 解析到 `20.205.243.166`；**`/dev/tcp/github.com/443` 建连失败**（TCP 层被阻断）；
+     - `git ls-remote https://github.com/...` → 超时（HTTPS 传输不可用）；加 `-c http.version=HTTP/1.1` 仍失败；
+     - IPv6 → HTTP 000；改用其它 GitHub IP（140.82.112.3 / .113.3 / .114.3）→ 全部 HTTP 000；
+     - **`ssh.github.com:443` → SSH 握手成功**（返回 `Permission denied (publickey)`，即网络可达、仅缺密钥）✅；
+     - 本机 `~/.ssh/*.pub` → **无任何 SSH 公钥**（从未为 GitHub 配过）；`gh` CLI **未安装**；无代理环境变量；
+  3. **结论**：目前**无法从本机直推**（HTTPS 通道被阻断、无凭据、无 remote）。**唯一已验证可达的推送通道是 SSH over 443（`ssh.github.com:443`）**，需要一对本机 SSH 密钥 + 作者在 GitHub 侧登记公钥（本机打不开 github.com 网页，需手机 / 另一台设备，或用 `api.github.com` + token 走 API 登记）；
+  4. **备用方案**：`git bundle create ... --all` 导出（含全部 74 个提交），换到有网络的机器 `git push`；
+  5. **待作者给的信息**（二选一即可开工）：① GitHub 仓库地址（`https://github.com/<用户名>/<仓库名>` 或 `git@github.com:<用户名>/<仓库名>.git`）——若仓库尚未创建，需在 GitHub 侧新建（**不要勾选 README / .gitignore**，避免与本地历史冲突）；② 或告知走哪条通道（SSH-443 / 代理+PAT / bundle 换机）。
+- 改动文件：`docs/ai-log.md`（本条）。**未改动业务代码、未新增依赖、未配置 remote、未生成任何密钥。**
+- 验证命令与结果：见第 2 点（均为实测输出）。
+- 遗留问题：**推送未完成**；仓库本身已处于"随时可推"状态（干净、`main`、无 remote）。
+- 下一步：作者通知"可建联"后 → 按所选通道执行：`ssh-keygen` 生成密钥 → 作者登记公钥 → `~/.ssh/config` 配 `Host github.com → HostName ssh.github.com / Port 443` → `git remote add origin …` → `git push -u origin main`（或代理+PAT 的 HTTPS 直推 / bundle 换机推送）。
