@@ -831,3 +831,19 @@
 - 验证命令与结果：本轮为文档轮，**未运行构建 / 接口命令**（无代码可验）；契约与实现清单逐条对账（原 17 条中 13 条与现实现一致、4 条本阶段转正待实现；另新增第 18 条）。
 - 遗留问题：**契约 v1.1 待作者复核**（本批结束的确认点）；批 2 起才动后端代码。
 - 下一步：**批 2 —— 后端：评论单条查询 / 修改**（`CommentRepository` 补 findById / update、`CommentService` 归属校验、`CommentController` 补 `GET` / `PUT /api/comments/{id}`、新增 `CommentUpdateRequest`、Swagger 注解与 smoke 断言扩展），做完停下等作者确认。
+
+### 阶段 8：功能迭代二（批 2：评论单条查询 / 修改）
+- 我的提示词摘要："**批 1 通过，请继续**"（作者复核通过契约 v1.1，并授权批 2）。
+- AI 做了什么：
+  1. **新增 `CommentUpdateRequest`**（model）：`content`（必填、≤1000 字）+ `visitorId`（必填、复用 `VisitorIdRequest.VISITOR_ID_PATTERN`）；
+  2. **`CommentRepository`**：新增 `findVoById(long)`（只选 id / article_id / author_name / content / created_at）与 `updateContent(long, String)`（`UPDATE comment SET content = ? WHERE id = ?`）；类注释同步（归属校验同时服务删除与修改）；
+  3. **`CommentService`**：新增 `getComment(long)`（不存在 → 40004）与 `updateComment(long, CommentUpdateRequest)`（**只改 `content`**；评论不存在或 visitorId 不匹配均 → 40004，与删除同一套语义；返回保留原创建时间的 `CommentVO`）；
+  4. **`CommentController`**：新增 `GET /api/comments/{id}` 与 `PUT /api/comments/{id}` 并补 `@Operation`；`@Tag` 描述改为"列表 / 发表 / 单条查询 / 修改 / 删除（契约 §四 · 8–12）"；
+  5. **编译**：`./mvnw -B -ntp compile` → **BUILD SUCCESS**（37 个源文件，较上批 +1）；
+  6. **重启后端**：确认 8080 上为旧实例（PID 4200）→ `taskkill` → 端口释放 → 后台启动 → `READY after 2s`、`/api/health` 返回 `UP`；
+  7. **手动实测**（临时脚本 `backend/target/tmp-check/comment-manual-test.mjs`，位于 gitignore 内）：创建 201 → 单条查询 200 → **他人 visitorId 修改 404/40004** → **空内容 400/40001（含 `fields.content`）** → 正常修改 200（content 更新，id / 昵称 / createdAt 不变）→ 查询不存在 404/40004 → 删除 200 → 删除后查询 404/40004 → 评论数回到 0；
+  8. **`frontend/scripts/smoke.mjs` 扩展**：新增「§四·10/11 评论：单条查询 / 修改」用例组（**15 项断言**），脚本头注释与末尾"契约未覆盖"清单同步（剩余：adjacent / 标签管理 / 阅读数）；**`npm run smoke` → 全部通过：112/112 项断言**（97 + 15），测试数据零残留。
+- 改动文件：新增（**完整**）`backend/src/main/java/com/example/blog/model/CommentUpdateRequest.java`；修改（**完整**）`backend/src/main/java/com/example/blog/repository/CommentRepository.java`、`backend/src/main/java/com/example/blog/service/CommentService.java`、`backend/src/main/java/com/example/blog/controller/CommentController.java`、`frontend/scripts/smoke.mjs`；文档 `README.md`、`docs/{api-contract,data-model,current-state,collaboration-log,ai-log}.md`；临时脚本 `backend/target/tmp-check/comment-manual-test.mjs`（gitignore 内，不提交）。**未新增依赖、未改表结构**。
+- 验证命令与结果（均为实测输出）：`./mvnw -B -ntp compile` → `BUILD SUCCESS`；`npm run smoke` → `全部通过：112/112 项断言`；手动实测 9 步见第 7 点。
+- 遗留问题：无新增（评论"修改"的**前端入口**留批 6，决策 BS）。
+- 下一步：**批 3 —— 后端：相邻文章**（`ArticleRepository` 补 adjacent 查询（只取 `PUBLISHED`、`ORDER BY created_at, id`）、`ArticleService` / `ArticleController` 补 `GET /api/articles/{id}/adjacent` + **详情接口带出 `prev` / `next`**、smoke 断言扩展；闭环遗留 19 的后端部分），做完停下等作者确认。

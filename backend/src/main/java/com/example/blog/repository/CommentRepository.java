@@ -14,10 +14,10 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 /**
- * 评论数据访问层（契约 §四 · 8、9、12）。
+ * 评论数据访问层（契约 §四 · 8–12）。
  *
- * <p>列表查询刻意不选出 {@code author_email} 与 {@code visitor_id}：前者是隐私、后者是归属凭证，
- * 只在删除前的归属校验（{@link #findById(long)}）里读取。
+ * <p>列表 / 单条查询刻意不选出 {@code author_email} 与 {@code visitor_id}：前者是隐私、后者是归属凭证，
+ * 只在删除 / 修改前的归属校验（{@link #findById(long)}）里读取。
  */
 @Repository
 public class CommentRepository {
@@ -85,6 +85,19 @@ public class CommentRepository {
             return comment;
         }, id);
         return rows.stream().findFirst();
+    }
+
+    /** 按 id 取评论响应体（不含 {@code author_email} / {@code visitor_id}）。 */
+    public Optional<CommentVO> findVoById(long id) {
+        List<CommentVO> rows = jdbcTemplate.query(
+                "SELECT id, article_id, author_name, content, created_at FROM comment WHERE id = ?",
+                COMMENT_VO_ROW_MAPPER, id);
+        return rows.stream().findFirst();
+    }
+
+    /** 更新评论内容（只改 {@code content}），返回受影响行数。 */
+    public int updateContent(long id, String content) {
+        return jdbcTemplate.update("UPDATE comment SET content = ? WHERE id = ?", content, id);
     }
 
     /** 删除评论，返回受影响行数。 */

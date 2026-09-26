@@ -2,7 +2,7 @@
 /**
  * 接口层回归脚本（阶段 6 批 1 · 决策 AW）
  *
- * 用途：把 `docs/api-contract.md` v1.0 里"已实现"的 13 个操作固化成可重复运行的用例，
+ * 用途：把 `docs/api-contract.md`（v1.1）里"已实现"的操作固化成可重复运行的用例（阶段 8 批 2 起含评论单条查询 / 修改），
  * 覆盖正常路径 + 错误分支（40001 / 40002 / 40004），跑完自动把测试数据清理干净。
  *
  * 用法（零新增依赖，只用 Node 原生 fetch）：
@@ -221,6 +221,59 @@ async function main() {
         check('删除后评论数回到 0', restored.json?.data?.total === 0);
     }
 
+    // ── §四·10 / 11 单条评论查询 / 修改（阶段 8 批 2）─────────────
+    group('§四·10/11 评论：单条查询 / 修改');
+    {
+        const post = await api('POST', '/articles/1/comments', {
+            body: { authorName: '冒烟测试', content: '单条查询与修改的临时评论。', visitorId: VISITOR },
+        });
+        const cid = post.json?.data?.id ?? null;
+        created.commentId = cid;
+
+        const g = await api('GET', `/comments/${cid}`);
+        check('单条查询 HTTP 200 且字段与 CommentVO 一致', g.status === 200 && okBody(g) && hasAll(g.json?.data, COMMENT_KEYS));
+        check('单条查询不回传 authorEmail / visitorId', g.json?.data !== null
+            && !Object.prototype.hasOwnProperty.call(g.json.data, 'authorEmail')
+            && !Object.prototype.hasOwnProperty.call(g.json.data, 'visitorId'));
+
+        checkError('单条查询：不存在 id=99999', await api('GET', '/comments/99999'), 404, 40004);
+
+        checkError('修改：visitorId 不匹配', await api('PUT', `/comments/${cid}`, {
+            body: { content: 'attempt', visitorId: OTHER_VISITOR },
+        }), 404, 40004);
+
+        const emptyContent = await api('PUT', `/comments/${cid}`, { body: { content: '', visitorId: VISITOR } });
+        checkError('修改：内容为空', emptyContent, 400, 40001);
+        check('40001 带字段级原因 data.fields.content', typeof emptyContent.json?.data?.fields?.content === 'string');
+
+        checkError('修改：内容超长（1001 字）', await api('PUT', `/comments/${cid}`, {
+            body: { content: 'a'.repeat(1001), visitorId: VISITOR },
+        }), 400, 40001);
+
+        checkError('修改：评论不存在 id=99999', await api('PUT', '/comments/99999', {
+            body: { content: 'x', visitorId: VISITOR },
+        }), 404, 40004);
+
+        const upd = await api('PUT', `/comments/${cid}`, { body: { content: '修改后的内容（smoke）。', visitorId: VISITOR } });
+        check('修改成功 HTTP 200 且 code=0', upd.status === 200 && okBody(upd));
+        check('content 已更新、昵称与创建时间不变', upd.json?.data?.content === '修改后的内容（smoke）。'
+            && upd.json?.data?.authorName === g.json?.data?.authorName
+            && upd.json?.data?.createdAt === g.json?.data?.createdAt,
+            `实际 ${JSON.stringify(upd.json?.data)}`);
+        check('修改不影响 id / articleId', upd.json?.data?.id === cid && upd.json?.data?.articleId === 1);
+
+        const again = await api('GET', `/comments/${cid}`);
+        check('再次查询读到新内容', again.json?.data?.content === '修改后的内容（smoke）。');
+
+        const del = await api('DELETE', `/comments/${cid}`, { body: { visitorId: VISITOR } });
+        check('清理该评论成功', del.status === 200 && okBody(del) && del.json.data === null);
+        if (okBody(del)) created.commentId = null;
+
+        const afterDel = await api('GET', '/articles/1/comments');
+        check('评论数回到 0', afterDel.json?.data?.total === 0);
+        checkError('单条查询：已删除', await api('GET', `/comments/${cid}`), 404, 40004);
+    }
+
     // ── §四·13–15 点赞 ────────────────────────────────────────────
     group('§四·13–15 点赞：状态 / 点赞 / 取消（两端幂等）');
     {
@@ -387,5 +440,5 @@ console.log(`\n${'-'.repeat(60)}`);
 console.log(failures.length === 0
     ? `全部通过：${pass}/${total} 项断言`
     : `失败 ${failures.length} 项 / 共 ${total} 项断言：\n- ${failures.join('\n- ')}`);
-console.log(`契约未覆盖：GET/PUT /api/comments/{id}、GET /api/articles/{id}/adjacent、标签管理接口（契约 §四·10/11/16/17，标为阶段 8 可选项）`);
+console.log(`契约未覆盖：GET /api/articles/{id}/adjacent、标签管理接口、POST /api/articles/{id}/views（契约 §四·16/17/18，阶段 8 批 3–批 5 落地）`);
 process.exit(failures.length === 0 ? 0 : 1);
