@@ -153,4 +153,4 @@ backend/   Spring Boot 后端：src/main/java/com/example/blog/{controller,servi
 | `docs/ai-log.md` | 逐轮追加的协作流水日志 |
 | `docs/debug-log.md` | 真实报错与修复记录 |
 | `docs/audit-report.md` | 前后端专项审计记录 |
-| `docs/demo/` | 演示截图 / 录屏素材 |
+| `docs/demo/` | 演示脚本（`README.md`，覆盖 12 个演示点）+ 截图素材（39 张）/ 录屏存放 |
