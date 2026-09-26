@@ -295,6 +295,8 @@
 | 以"正文元素"为准的阅读进度条会在短文章上 0→100% 跳变 | 阶段 7 批 1 实测：初版口径 =（已滚过正文的距离）/（正文高度 − 视口高度 + 页头高度）。第 1 篇正文高约 770px、视口 720px，**分母只剩约 114px** —— 滚 700px 时进度已达 100% 并一直满格（该页总可滚约 1250px），观感像"进度条坏掉" | **已修正（同批次内自查）**：改为**页面滚动比例** `scrollY / (scrollHeight − innerHeight)`，滚到页面底部才是 100%；同时删除不再需要的 `target` prop 与 watcher，理由写进 `ReadingProgress.vue` 头注释 |
 | 触摸模拟下合成点击打不开 `<details>`（窄屏目录面板） | 阶段 7 批 4 实测：375×667（`mobile: true, touch: true`）下，坐标点击「本页目录」两次均未开合（`click_if_interactive` 也只把它识别成 `role: generic`，无 button 语义）；改用元素 ref + `press_key` `Enter` **一次成功**，展开 / 收起 / 点条目跳转全部正常 | 无需改代码（工具限制，与"合成点击偶发不送达"同源）。**规避**：验证 `<details>` / 原生折叠控件时一律走键盘路径（先 `click_if_interactive` 取 ref，再 `press_key`） |
 | 窄屏目录面板"先滚动、后收起"会把目标标题顶到视口上方 | 阶段 7 批 4 自查：点「技术栈」后面板收起，其高度塌陷使目标标题落到视口之上（只剩该节正文段落） | **已修正（同批次内）**：`TableOfContents.goTo()` 改为**先 `emit('navigate')`（父级同步把 `open` 置否、浏览器即时回流）再 `scrollIntoView`**，重测标题正好落在页头下方 |
+| Vite 热更新中间态：新标签首次打开页面主区为空 | 阶段 8 批 6 / 批 7 两次实测：`browser.create_tab` 刚打开详情页 / 写作台时只渲染页头（`page.wait_for` 文本条件超时，`lastObserved` 只有导航文字）；**`tab.reload` 后立即正常**（标题、正文、交互全部到位） | 无需处理（开发服务器热更新时序，非项目缺陷）。**规避**：新标签打开后若主区为空，先 `tab.reload` 再观察 |
+| `page.visual.snapshot` 偶发 `PAGE_NOT_READY`（截图晚于渲染） | 阶段 8 批 6 / 批 7 多次出现 "Browser page did not render the screenshot in time"，**重试一次即成功**；导航后沿用旧 `snapshotId` 会报 `STALE_SNAPSHOT`，重新截图即可 | 无需处理（截图通道抖动，非项目缺陷）。**规避**：失败即重试；跨文档一律重新截图获取新 `snapshotId` |
 
 ---
 

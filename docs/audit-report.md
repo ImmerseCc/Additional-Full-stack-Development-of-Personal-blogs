@@ -285,3 +285,42 @@
 
 - **可复核**：`npm run smoke` 97/97；`npm run build` 产物分包（见上表）；对比度（`#3563e0` 对白底 5.23，node 按 WCAG 公式实算）；六个模块的浏览器走查记录（`docs/demo/stage7-01…10`）+ 各批 ai-log 条目。
 - **未覆盖（如实登记）**：骨架屏出现时机（遗留 18，本机请求约 10 ms 抓不到）；异步 chunk 加载失败路径；`prefers-reduced-motion` 的动态仿真（仍为静态证据）；浏览器控制台 warn 与网络层 4xx（本机 Edge 无头不可用）—— 与阶段 6 的未覆盖范围一致，建议在阶段 9 的正式审计中统一处理。
+
+---
+
+## 阶段 8 变更摘要（供阶段 9 正式审计参考）
+
+> 本阶段是**后端能力补全 + 前端最小接入 + 写作台**：契约升级为 **v1.1 已确认**（第 10 / 11 / 16 / 17 条转正、新增第 18 条、`viewCount` 字段）；表结构**零变更**；未新增任何依赖；新增 1 个前端路由（`/studio`）与 1 个视图。
+
+### 1. 代码变更清单
+
+| 类型 | 文件 | 说明 |
+|---|---|---|
+| 新增 | `backend/src/main/java/com/example/blog/model/{CommentUpdateRequest,AdjacentVO,AdjacentPairVO,ViewCountVO,TagSaveRequest}.java` | 评论修改 DTO、相邻文章 VO（顶层化）、阅读数 VO、标签 DTO |
+| 修改 | `backend/src/main/java/com/example/blog/model/{ArticleSummaryVO,ArticleDetailVO}.java` | +`viewCount`（契约 §2.2 / §2.3） |
+| 修改 | `backend/src/main/java/com/example/blog/repository/{CommentRepository,ArticleRepository,TagRepository}.java` | 单条评论读改、相邻查询（行值比较 `(created_at, id)`）、阅读数自增、标签管理写方法 |
+| 修改 | `backend/src/main/java/com/example/blog/service/{CommentService,ArticleService,TagService}.java` | 归属校验 / 相邻带出 / 阅读数 / 标签管理（重名 `40009`） |
+| 修改 | `backend/src/main/java/com/example/blog/controller/{CommentController,ArticleController,TagController}.java` | 新增 7 个操作（**20 个操作收口**） |
+| 修改 | `backend/src/main/resources/application.yml` | JDBC URL 追加 `journal_mode=WAL` |
+| 新增 | `frontend/src/views/StudioView.vue` | 写作台（隐藏入口 `/studio`）：文章 CRUD + 草稿切换 + 标签管理 |
+| 修改 | `frontend/src/api/{articles,tags,comments}.js` | +7 个写接口封装（`postArticleView` / `createArticle` / `updateArticle` / `deleteArticle` / `createTag` / `renameTag` / `deleteTag` / `updateComment`） |
+| 修改 | `frontend/src/router/index.js` | +`/studio` 隐藏路由（不进导航栏） |
+| 修改 | `frontend/src/views/ArticleDetailView.vue` | 阅读数显示与上报（fire-and-forget + 返回值刷新）、上下篇导航 |
+| 修改 | `frontend/src/components/{CommentItem,CommentSection}.vue` | 评论行内编辑（仅本机账本可见） |
+| 修改 | `frontend/scripts/smoke.mjs` | 97 → **143 项断言**（新增 4 组用例；修正 1 项阶段 6 遗留的过时断言） |
+
+### 2. 契约与实现一致性
+
+- `docs/api-contract.md` **v1.1 已确认**（作者"批 1 通过"）；**§四 · 1–18 全部实现**；
+- 错误码闭环：`40009`（标签重名）、`50000`（临时探针）、`50001` + `SQLITE_BUSY`（外部写者持锁 → 锁内写等待 **5.11s** 失败、锁内读 **3.6ms** 成功）——**全部拿到真实触发记录**（探针与临时程序均未提交）；
+- 前端不按记忆写死字段名：smoke 的 `ARTICLE_KEYS` 已加入 `viewCount`，按契约断言。
+
+### 3. 数据与运行环境
+
+- 数据库：`journal_mode=wal`（伴生 `-wal` / `-shm`）；重置口径见 `docs/data-model.md` §五；
+- 数据终核：`article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0`（`view_count` 复位为 0）。
+
+### 4. 本次审计可复核项与未覆盖项
+
+- **可复核**：`npm run smoke` **143/143**；`npm run build` **258ms** 与分包（`StudioView 11.91 kB` 懒加载、详情 shell 22.92 kB）；浏览器 14 项实测记录（批 6 / 批 7）与截图 `docs/demo/stage8-01…05`；各批 ai-log 条目。
+- **未覆盖（如实登记）**：浏览器控制台 warn 与网络层 4xx（本机 Edge 无头不可用）；`prefers-reduced-motion` 动态仿真；骨架屏出现时机（遗留 18）；详情页异步管线失败路径（遗留 32）—— 与阶段 6 / 7 的未覆盖范围一致，建议阶段 9 正式审计统一处理。

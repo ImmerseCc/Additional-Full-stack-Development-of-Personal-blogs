@@ -919,3 +919,17 @@
 - 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 265ms`（`StudioView 11.91 kB │ gzip 3.89 kB`）；`npm run smoke` → `全部通过：143/143 项断言`；浏览器 8 步见第 5 点。
 - 遗留问题：无新增；**如实说明**：写作台是**演示级隐藏入口（无鉴权）**，已在页面内与 README 标注，阶段 9 审计将复核。
 - 下一步：**批 8 —— 收尾与回归**（全量 `build` / `smoke` 终测；遗留问题逐条收口（含 `current-state.md` §五 的 33 条与"未覆盖项"刷新）；文档同步 + `current-state.md` 整份覆盖 + **验收清单**（验收结论由作者签）；`docs/demo` 截图归档），做完停下等作者。
+
+### 阶段 8：功能迭代二（批 8：收尾与回归 —— **阶段 8 完成，等待作者人工验收**）
+- 我的提示词摘要："**批 7 通过，请继续**"（作者确认批 7 并授权批 8，即阶段收尾）。
+- AI 做了什么：
+  1. **整阶段终测**：`npm run build` → **258ms**；`npm run smoke` → **全部通过：143/143 项断言**；数据库只读终核 `article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0`、`journal_mode=wal`、`view_count` 全为 0；
+  2. **暗色复核与截图**：浏览器打开 `/articles/2` → 切到暗色 → 截图（meta「阅读 N」与暗色内容正常）→ **归还「亮色」主题**（按进入时状态还原）；归档 `docs/demo/stage8-05-detail-dark.png`（阶段 8 截图共 **5 张**）；
+  3. **遗留问题收口**（`current-state.md` §五）：**9（WAL）/ 19（上下篇）/ 28（`40009`）标记闭环**；20 的 shell 数字更新为 **22.92 kB**；"未覆盖项"改写（`40009` / `50000` / `50001` / `SQLITE_BUSY` 已闭环）；
+  4. **`docs/debug-log.md` 新增 2 条观察项**：⑱ Vite HMR 中间态（新标签首次打开主区为空 → `tab.reload` 即正常）；⑲ `page.visual.snapshot` 偶发 `PAGE_NOT_READY`（重试即成功；跨文档沿用旧 `snapshotId` 会 `STALE_SNAPSHOT`）；
+  5. **文档覆盖**：`docs/current-state.md` **整份覆盖**为「阶段 8 完成 × 待验收」快照（含 **13 条人工验收清单**、决策 BR–BX、§七 接口清单更新为 20 个操作）；`README.md` 顶部状态块 6 行；`docs/collaboration-log.md`（头部 + 阶段索引第 8 行 + **阶段 8 阶段记录**）；
+  6. **不代签**：阶段验收结论由作者给出（AGENTS.md 协作规则 7）。
+- 改动文件：`docs/current-state.md`（**整份覆盖**）、`README.md`、`docs/{collaboration-log,ai-log,debug-log}.md`（均为**完整文档**，无占位）；新增截图 `docs/demo/stage8-05-detail-dark.png`；**无业务代码改动、未新增依赖**。
+- 验证命令与结果（均为实测输出）：见第 1 点；浏览器暗色复核见第 2 点。
+- 遗留问题：见 `docs/current-state.md` 第五节（共 33 条；阶段 8 闭环 **9 / 19 / 28**，另完成 20 的注记更新与"未覆盖项"清零）。
+- 下一步：**作者按 13 条清单人工验收阶段 8**；通过后进入**阶段 9（报错记录整理 + 前后端专项审计 + 交付文档与演示脚本）**。
