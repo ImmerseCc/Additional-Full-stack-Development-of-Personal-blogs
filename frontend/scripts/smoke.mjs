@@ -145,7 +145,9 @@ async function main() {
         check('HTTP 200 且 code=0', r.status === 200 && okBody(r));
         check('含 ArticleDetail 的 content / prev / next（契约 §2.3）', hasAll(r.json?.data, [...ARTICLE_KEYS, 'content', 'prev', 'next']));
         check('content 非空', typeof r.json?.data?.content === 'string' && r.json.data.content.length > 0);
-        check('prev / next 恒为 null（阶段 8 能力）', r.json?.data?.prev === null && r.json?.data?.next === null);
+        check('prev / next 已实装（文章 1 为最早一篇：prev=null、next 非空）',
+            r.json?.data?.prev === null && r.json?.data?.next?.id != null,
+            `实际 prev=${JSON.stringify(r.json?.data?.prev)} next=${JSON.stringify(r.json?.data?.next)}`);
         checkError('不存在的 id=99999', await api('GET', '/articles/99999'), 404, 40004);
     }
 
@@ -272,6 +274,61 @@ async function main() {
         const afterDel = await api('GET', '/articles/1/comments');
         check('评论数回到 0', afterDel.json?.data?.total === 0);
         checkError('单条查询：已删除', await api('GET', `/comments/${cid}`), 404, 40004);
+    }
+
+    // ── §四·16 相邻文章（阶段 8 批 3）─────────────────────────────
+    group('§四·16 相邻文章：GET /api/articles/{id}/adjacent');
+    {
+        const list = await api('GET', '/articles?size=20');
+        const items = list.json?.data?.items ?? [];
+        const newest = items[0];
+        const oldest = items[items.length - 1];
+
+        const oldAdj = await api('GET', `/articles/${oldest.id}/adjacent`);
+        check('最早一篇：prev=null、next 非空', oldAdj.status === 200 && okBody(oldAdj)
+            && oldAdj.json?.data?.prev === null && oldAdj.json?.data?.next?.id != null,
+            `实际 ${JSON.stringify(oldAdj.json?.data)}`);
+        check('相邻项为 {id,title} 两字段（契约 §四·16）',
+            hasAll(oldAdj.json?.data?.next, ['id', 'title']) && Object.keys(oldAdj.json.data.next).length === 2);
+
+        const newAdj = await api('GET', `/articles/${newest.id}/adjacent`);
+        check('最新一篇：next=null、prev 非空', okBody(newAdj)
+            && newAdj.json?.data?.next === null && newAdj.json?.data?.prev?.id != null,
+            `实际 ${JSON.stringify(newAdj.json?.data)}`);
+
+        const detail = await api('GET', `/articles/${newest.id}`);
+        check('详情接口带出与 /adjacent 一致的 prev / next（决策 BT）',
+            detail.json?.data?.prev?.id === newAdj.json?.data?.prev?.id && detail.json?.data?.next === null);
+
+        checkError('文章不存在 id=99999', await api('GET', '/articles/99999/adjacent'), 404, 40004);
+
+        const draft = await api('POST', '/articles', {
+            body: { title: '【冒烟测试】相邻链草稿', content: 'draft', status: 'DRAFT' },
+        });
+        created.articleId = draft.json?.data?.id ?? null;
+        const withDraft = await api('GET', `/articles/${newest.id}/adjacent`);
+        check('草稿不进入相邻链（最新一篇的 next 仍为 null）', withDraft.json?.data?.next === null);
+        const delDraft = await api('DELETE', `/articles/${draft.json?.data?.id}`);
+        check('清理草稿文章', okBody(delDraft));
+        if (okBody(delDraft)) created.articleId = null;
+
+        const tmp = await api('POST', '/articles', {
+            body: { title: '【冒烟测试】相邻链已发布', content: 'tmp', status: 'PUBLISHED' },
+        });
+        created.articleId = tmp.json?.data?.id ?? null;
+        const adjAfterTmp = await api('GET', `/articles/${newest.id}/adjacent`);
+        check('插入新发布文章后：原最新一篇的 next 指向它', adjAfterTmp.json?.data?.next?.id === tmp.json?.data?.id,
+            `实际 ${JSON.stringify(adjAfterTmp.json?.data?.next)}`);
+        const tmpAdj = await api('GET', `/articles/${tmp.json?.data?.id}/adjacent`);
+        check('新文章：prev 指向原最新一篇、next=null',
+            tmpAdj.json?.data?.prev?.id === newest.id && tmpAdj.json?.data?.next === null,
+            `实际 ${JSON.stringify(tmpAdj.json?.data)}`);
+
+        const delTmp = await api('DELETE', `/articles/${tmp.json?.data?.id}`);
+        check('清理临时发布文章', okBody(delTmp));
+        if (okBody(delTmp)) created.articleId = null;
+        const backToNormal = await api('GET', `/articles/${newest.id}/adjacent`);
+        check('清理后最新一篇的 next 回到 null', backToNormal.json?.data?.next === null);
     }
 
     // ── §四·13–15 点赞 ────────────────────────────────────────────
@@ -440,5 +497,5 @@ console.log(`\n${'-'.repeat(60)}`);
 console.log(failures.length === 0
     ? `全部通过：${pass}/${total} 项断言`
     : `失败 ${failures.length} 项 / 共 ${total} 项断言：\n- ${failures.join('\n- ')}`);
-console.log(`契约未覆盖：GET /api/articles/{id}/adjacent、标签管理接口、POST /api/articles/{id}/views（契约 §四·16/17/18，阶段 8 批 3–批 5 落地）`);
+console.log(`契约未覆盖：标签管理接口、POST /api/articles/{id}/views（契约 §四·17/18，阶段 8 批 4–批 5 落地）`);
 process.exit(failures.length === 0 ? 0 : 1);

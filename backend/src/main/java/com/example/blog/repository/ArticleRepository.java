@@ -1,6 +1,7 @@
 package com.example.blog.repository;
 
 import com.example.blog.common.TimeFormats;
+import com.example.blog.model.AdjacentVO;
 import com.example.blog.model.Article;
 import com.example.blog.model.ArticleSummaryVO;
 import java.sql.PreparedStatement;
@@ -98,6 +99,31 @@ public class ArticleRepository {
         List<String> rows = jdbcTemplate.query(
                 "SELECT a.content FROM article a WHERE a.id = ?", (rs, rowNum) -> rs.getString("content"), id);
         return rows.stream().findFirst();
+    }
+
+    /** 相邻文章的行映射（只有 id 与标题）。 */
+    private static final RowMapper<AdjacentVO> ADJACENT_ROW_MAPPER =
+            (rs, rowNum) -> new AdjacentVO(rs.getLong("id"), rs.getString("title"));
+
+    /**
+     * 相邻文章（契约 §四 · 16，决策 BT）：before = 更早的一篇（prev）。
+     *
+     * <p>候选只含 {@code PUBLISHED}；排序口径为 {@code (created_at, id)}，用行值比较避免同秒歧义；
+     * 当前文章已是最早一篇时返回空（调用方转成 null）。
+     */
+    public Optional<AdjacentVO> findAdjacentBefore(long id) {
+        String sql = "SELECT a.id, a.title FROM article a WHERE a.status = ?"
+                + " AND (a.created_at, a.id) < (SELECT b.created_at, b.id FROM article b WHERE b.id = ?)"
+                + " ORDER BY a.created_at DESC, a.id DESC LIMIT 1";
+        return jdbcTemplate.query(sql, ADJACENT_ROW_MAPPER, Article.STATUS_PUBLISHED, id).stream().findFirst();
+    }
+
+    /** 相邻文章的后一篇（更新的一篇），口径同 {@link #findAdjacentBefore(long)}。 */
+    public Optional<AdjacentVO> findAdjacentAfter(long id) {
+        String sql = "SELECT a.id, a.title FROM article a WHERE a.status = ?"
+                + " AND (a.created_at, a.id) > (SELECT b.created_at, b.id FROM article b WHERE b.id = ?)"
+                + " ORDER BY a.created_at ASC, a.id ASC LIMIT 1";
+        return jdbcTemplate.query(sql, ADJACENT_ROW_MAPPER, Article.STATUS_PUBLISHED, id).stream().findFirst();
     }
 
     /**

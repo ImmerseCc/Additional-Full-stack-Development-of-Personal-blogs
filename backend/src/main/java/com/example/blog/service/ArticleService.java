@@ -4,6 +4,8 @@ import com.example.blog.common.BizException;
 import com.example.blog.common.ErrorCode;
 import com.example.blog.common.PageParams;
 import com.example.blog.common.TimeFormats;
+import com.example.blog.model.AdjacentPairVO;
+import com.example.blog.model.AdjacentVO;
 import com.example.blog.model.Article;
 import com.example.blog.model.ArticleCreateRequest;
 import com.example.blog.model.ArticleDetailVO;
@@ -83,12 +85,26 @@ public class ArticleService {
         }
     }
 
-    /** 文章详情（契约 §四 · 3）：含正文；prev / next 属阶段 8，阶段 2 恒为 null。 */
+    /** 文章详情（契约 §四 · 3）：含正文与 prev / next（阶段 8 起实装，只含已发布文章）。 */
     public ArticleDetailVO getArticleDetail(long id) {
         ArticleSummaryVO summary = articleRepository.findSummaryById(id)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "文章不存在：id=" + id));
         String content = articleRepository.findContentById(id).orElse("");
-        return ArticleDetailVO.of(summary, content, null, null);
+        return ArticleDetailVO.of(summary, content, adjacentBefore(id), adjacentAfter(id));
+    }
+
+    /** 相邻文章（契约 §四 · 16）：文章不存在抛 40004；首 / 尾篇对应项为 null。 */
+    public AdjacentPairVO getAdjacentPair(long id) {
+        requireArticleExists(id);
+        return new AdjacentPairVO(adjacentBefore(id), adjacentAfter(id));
+    }
+
+    private AdjacentVO adjacentBefore(long id) {
+        return articleRepository.findAdjacentBefore(id).orElse(null);
+    }
+
+    private AdjacentVO adjacentAfter(long id) {
+        return articleRepository.findAdjacentAfter(id).orElse(null);
     }
 
     /** 创建文章（契约 §四 · 4）：标签不存在则自动创建，返回列表项（HTTP 201 由 controller 决定）。 */

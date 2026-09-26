@@ -1,6 +1,7 @@
 package com.example.blog.controller;
 
 import com.example.blog.common.ApiResponse;
+import com.example.blog.model.AdjacentPairVO;
 import com.example.blog.model.ArticleCreateRequest;
 import com.example.blog.model.ArticleDetailVO;
 import com.example.blog.model.ArticleSummaryVO;
@@ -48,10 +49,16 @@ public class ArticleController {
         return ApiResponse.ok(articleService.listArticles(page, size, keyword, tags, tagMode, status));
     }
 
-    @Operation(summary = "文章详情", description = "含 Markdown 正文；prev / next 属阶段 8 能力，当前恒为 null。")
+    @Operation(summary = "文章详情", description = "含 Markdown 正文与 prev / next（只含已发布文章，按 created_at、id 排序）。")
     @GetMapping("/{id}")
     public ApiResponse<ArticleDetailVO> detail(@PathVariable long id) {
         return ApiResponse.ok(articleService.getArticleDetail(id));
+    }
+
+    @Operation(summary = "上一篇 / 下一篇", description = "只取已发布文章；首篇 prev、尾篇 next 为 null；文章不存在返回 40004。")
+    @GetMapping("/{id}/adjacent")
+    public ApiResponse<AdjacentPairVO> adjacent(@PathVariable long id) {
+        return ApiResponse.ok(articleService.getAdjacentPair(id));
     }
 
     @Operation(summary = "创建文章", description = "成功返回 HTTP 201；标签不存在会自动创建；summary 留空时取正文前 120 字。")

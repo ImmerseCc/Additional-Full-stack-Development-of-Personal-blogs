@@ -847,3 +847,18 @@
 - 验证命令与结果（均为实测输出）：`./mvnw -B -ntp compile` → `BUILD SUCCESS`；`npm run smoke` → `全部通过：112/112 项断言`；手动实测 9 步见第 7 点。
 - 遗留问题：无新增（评论"修改"的**前端入口**留批 6，决策 BS）。
 - 下一步：**批 3 —— 后端：相邻文章**（`ArticleRepository` 补 adjacent 查询（只取 `PUBLISHED`、`ORDER BY created_at, id`）、`ArticleService` / `ArticleController` 补 `GET /api/articles/{id}/adjacent` + **详情接口带出 `prev` / `next`**、smoke 断言扩展；闭环遗留 19 的后端部分），做完停下等作者确认。
+
+### 阶段 8：功能迭代二（批 3：相邻文章 + 详情接口带出 prev / next）
+- 我的提示词摘要："**批 2 通过，请继续**"（作者确认批 2 并授权批 3）。
+- AI 做了什么：
+  1. **新增两个 VO**：`AdjacentVO(id, title)`（顶层 record，取代原先嵌在 `ArticleDetailVO` 里的 `Adjacent`）与 `AdjacentPairVO(prev, next)`（`/adjacent` 的响应体）；`ArticleDetailVO` 的字段类型与 `of(...)` 同步改用 `AdjacentVO`（`prev` / `next` 的 JSON 形状不变）；
+  2. **`ArticleRepository`**：新增 `findAdjacentBefore(long)` / `findAdjacentAfter(long)` —— 单条 SQL，候选只含 `PUBLISHED`，用**行值比较** `(created_at, id) < / > (SELECT ...)` 定位相邻项，DESC / ASC 各取 1 条；行值语法先经临时程序 `RowValueCheck.java` 在内存库实测（`prev=1 next=3`）后才落库；
+  3. **`ArticleService`**：`getArticleDetail` 改为带出 `prev` / `next`（决策 BT）；新增 `getAdjacentPair(long id)`（先 `requireArticleExists`，不存在抛 40004）；
+  4. **`ArticleController`**：新增 `GET /api/articles/{id}/adjacent`，并更新详情接口的 `@Operation` 描述；
+  5. **编译**：`./mvnw -B -ntp compile` → **BUILD SUCCESS**；重启后端（旧实例 PID → `taskkill` → 后台启动 → `READY after 1s`）；
+  6. **手动实测**（临时脚本 `adjacent-manual-test.mjs`）：最早篇 `{prev:null, next:2}`、最新篇 `{prev:11, next:null}`、中间篇 `{prev:5, next:7}`、**详情接口与 `/adjacent` 一致**、不存在 → 404/40004、**草稿不入链**、插入新发布文章后原最新篇 `next` 指向它、新文章 `prev` 指向原最新篇、删除后链条复位、文章总数回到 12；
+  7. **`smoke.mjs` 扩展**：新增「§四·16 相邻文章」用例组（**11 项断言**）；**修正 1 项过时断言**（阶段 6 写的"prev / next 恒为 null"语义已变，改为"文章 1 为最早一篇：prev=null、next 非空"）；首跑 `失败 1 项 / 共 123 项` → 修正后 **全部通过：123/123 项断言**。
+- 改动文件：新增（**完整**）`backend/src/main/java/com/example/blog/model/AdjacentVO.java`、`backend/src/main/java/com/example/blog/model/AdjacentPairVO.java`；修改（**完整**）`backend/src/main/java/com/example/blog/model/ArticleDetailVO.java`、`backend/src/main/java/com/example/blog/repository/ArticleRepository.java`、`backend/src/main/java/com/example/blog/service/ArticleService.java`、`backend/src/main/java/com/example/blog/controller/ArticleController.java`、`frontend/scripts/smoke.mjs`；文档 `README.md`、`docs/{current-state,collaboration-log,ai-log}.md`；临时程序 `backend/target/tmp-check/{RowValueCheck.java, adjacent-manual-test.mjs}`（gitignore 内，不提交）。**未新增依赖、未改契约、未改表结构**。
+- 验证命令与结果（均为实测输出）：`./mvnw -B -ntp compile` → `BUILD SUCCESS`；`npm run smoke` → `全部通过：123/123 项断言`；手动实测 10 步见第 6 点。
+- 遗留问题：**闭环遗留 19 的后端部分**（前端渲染上下篇留批 6）。
+- 下一步：**批 4 —— 后端：标签管理三接口 + 启用 `40009`**（`TagRepository` 补 insert / rename / delete / existsByName，`TagService` 补 1–20 字校验与重名冲突 → `40009`（闭环遗留 28），`TagController` 补 `POST` / `PUT` / `DELETE /api/tags`，新增 `TagSaveRequest`，smoke 断言扩展），做完停下等作者确认。
