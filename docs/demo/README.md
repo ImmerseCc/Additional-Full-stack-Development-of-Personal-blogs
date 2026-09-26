@@ -143,3 +143,122 @@ cd "/d/code/Additional Full-stack Development of Personal blogs/frontend" && npm
 3. **不要演示真实删除**：`/studio` 与 `DELETE` 接口都是**演示级无鉴权**，演示时只删自己刚建的文章；删除文章后标签会保留，属既定行为；
 4. **演示前请重置数据**（数据库 + 本地数据），结束后如需回到种子状态同样按 README 第五节处理；
 5. 本目录的 `.png` 均为真实浏览器截图（阶段 6 / 7 / 8 / 9 各批实测时归档），文件名前缀对应阶段号。
+
+---
+
+## 附录 A：后端演示逐步脚本（Swagger UI 版 · 录屏用）
+
+> 用途：主指令 §七·6 要求后端演示 6 个点（**启动、创建文章、列表查询、修改、删除、重启后数据保留**）。本附录给出一份"照着念、照着点"的版本；命令行的等价做法见 §三 表格。
+> 为什么用 Swagger UI：**Git Bash 的 `curl` 传中文会按 GBK 编码**（见 `docs/debug-log.md` 报错记录 4），Swagger 是表单提交、无此问题，且顺带展示了"API 文档"这个加分项。
+
+### A.0 开录前 3 分钟准备
+
+| 检查项 | 命令 / 操作 | 期望 |
+|---|---|---|
+| 后端在跑 | `curl.exe -s http://localhost:8080/api/health`（PowerShell）或浏览器打开该地址 | `{"code":0,...,"status":"UP"}` |
+| 前端在跑 | 浏览器打开 http://localhost:5173/articles | 列表页「共 12 篇文章」 |
+| 数据是种子状态 | 见 §五 或 `GET /api/tags` | `article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0` |
+| 窗口摆放 | 终端 A（后端）＋ 浏览器标签 1（Swagger UI：`http://localhost:8080/swagger-ui/index.html`）＋ 标签 2（前端列表） | 浏览器缩放 100%，窗口 ≥1280 宽（Swagger 右侧不折叠） |
+| 随手记 id | 便签 / 记事本 | 第 2 步拿到的 `id` 后面 PUT / DELETE 都要用 |
+
+### A.1 第 1 步 · 启动（约 20 秒镜头）
+
+```bash
+cd "/d/code/Additional Full-stack Development of Personal blogs/backend" && ./mvnw spring-boot:run
+```
+
+镜头给到这三行（这是"启动了"的硬证据）：
+
+1. `Starting BlogApplication using Java 26.0.2.1 with PID ...`
+2. `Tomcat started on port 8080 (http) with context path '/'`
+3. **`Started BlogApplication in X seconds`**
+
+随后切浏览器：`/api/health` 显示 `code=0 / status=UP` → 再切 Swagger UI，滚动展示 **5 个分组（健康检查 / 文章 / 标签 / 评论 / 点赞）与 20 个操作**，顺带念一下顶部的统一约定（`{code,message,data}`、7 个错误码、分页 `page` 从 1 起、`size` 1–20、演示级无鉴权）。
+
+### A.2 第 2 步 · 创建文章（POST /api/articles）
+
+Swagger UI → **文章**分组 → `POST /api/articles` → **Try it out** → Request body 粘贴：
+
+```json
+{
+  "title": "演示：新建一篇文章",
+  "content": "## 小标题\n\n这是演示用的正文，用来验证创建接口。",
+  "status": "PUBLISHED",
+  "tags": ["演示"]
+}
+```
+
+→ **Execute**。期望：**HTTP 201**，响应 `data` 里能看到 `id`（记下）、`summary`（留空时后端自动截正文前 120 字）、`tags: ["演示"]`、`viewCount: 0`。
+
+**接着把镜头切到前端标签并刷新** → 新文章出现在列表顶部（前后端联通的直观证据），点进去能看到 Markdown 正文。
+
+**（可选加分镜头）** 把 `title` 清空再 Execute → **400 / `code 40001`**，`data.fields.title = "标题不能为空"` —— 说明"字段级校验原因"。
+
+### A.3 第 3 步 · 列表查询（GET /api/articles）
+
+`GET /api/articles` → Try it out，依次改参数（每次 Execute 都能看到 `{items,page,size,total,totalPages}`）：
+
+| 参数 | 期望 |
+|---|---|
+| （不带参数） | 默认 `page=1&size=10&status=PUBLISHED`，只含**已发布**、按 `createdAt` 倒序 |
+| `size=5&page=2` | 第二页 5 条（共 12 篇） |
+| `keyword=SQLite` | **3 篇**（只按**标题**模糊匹配） |
+| `tags=Vue,前端&tagMode=and` | **2 篇**（同时包含） |
+| `tags=Vue,前端&tagMode=or` | **5 篇**（任一即可） |
+| `status=DRAFT` | 当前草稿（种子状态为 0 篇；第 4 步之后会变成 1 篇） |
+| `size=999`（反例） | **400 / `code 40002`**（`size` 上限 20） |
+
+### A.4 第 4 步 · 修改文章（PUT /api/articles/{id}，全量语义）
+
+`PUT /api/articles/{id}`（填第 2 步的 id）→ Try it out → 请求体：
+
+```json
+{
+  "title": "演示：标题已修改（已转草稿）",
+  "content": "## 小标题\n\n这是演示用的正文，用来验证创建接口。",
+  "status": "DRAFT",
+  "tags": ["演示"]
+}
+```
+
+→ Execute → **200** + 更新后的对象（标题已变、`status=DRAFT`）。然后：
+
+- `GET /api/articles`（默认）→ **该文章不在列表里**；
+- `GET /api/articles?status=DRAFT` → **能查到**；
+- 前端标签刷新 → 列表里也看不到了（草稿不对外展示）；
+- 但 `GET /api/articles/{id}`（详情）**仍能读到该草稿** —— 前端直接打开 `/articles/{id}` 也能看到正文（详情接口不按状态过滤，这点可选展示）。
+
+> 提醒：`PUT` 是**全量更新**，`title` / `content` / `status` 必填；`tags` 省略或传 `[]` 都表示**清空标签**。
+
+### A.5 第 5 步 · 重启后数据保留（**关键镜头，建议放在删除之前**）
+
+1. 终端 A 按 **`Ctrl + C`** 停服（画面出现 `Stopping service [Tomcat]` 之类）；
+2. 重新执行 `./mvnw spring-boot:run`，等 `Started BlogApplication in X seconds`；
+3. 浏览器再查 `GET /api/articles/{id}`（或 `status=DRAFT` 的列表）→ **标题是改过的、状态仍是 DRAFT —— 数据还在**。
+
+讲解点：数据落在**单文件 SQLite**（`backend/data/blog.db`，运行时伴随 `blog.db-wal` / `blog.db-shm`）；每次启动都会幂等执行 `schema.sql` + `data.sql`，不会重复插入（可打开 `backend/data/` 目录展示文件与时间戳）。
+
+### A.6 第 6 步 · 删除文章（收尾）
+
+- `DELETE /api/articles/{id}` → Execute → **200，`data: null`**；
+- 再 `GET /api/articles/{id}` → **404 / `code 40004`**；
+- 想在前端"看到少一条"：删除前先把它 `PUT` 回 `PUBLISHED` 再删；
+- ⚠️ **删除文章不会删除标签**：`GET /api/tags` 里"演示"标签仍在，只是 `articleCount` 归 0。演示收尾可再 `DELETE /api/tags/{id}` 把标签也清掉。
+
+### A.7 录完的收尾
+
+```bash
+# 只想清掉演示数据：在 Swagger 里删掉演示创建的文章（+ 标签）
+# 想彻底回到种子状态：停服 → 删数据库三件套 → 重启（会丢数据，不可恢复）
+cd "/d/code/Additional Full-stack Development of Personal blogs/backend" && rm -f data/blog.db data/blog.db-wal data/blog.db-shm
+```
+
+### A.8 录制中途常见问题
+
+| 现象 | 原因 | 处理 |
+|---|---|---|
+| Swagger UI 打不开 / 连接被拒 | 后端没在运行 | 先启动后端，等 `Started BlogApplication` 再刷新 |
+| 端口 8080 被占用（`Port 8080 was already in use`） | 已有一个实例在跑 | `netstat -ano \| grep ":8080 " \| grep -i listening` 取 PID → `taskkill //PID <pid> //F` |
+| Git Bash 里 `curl` 带中文报 `40002` / 乱码 | curl 按 GBK 编码参数 | 改用 Swagger UI，或 PowerShell 的 `curl.exe`，或 `node -e` 的 `fetch` |
+| 前端列表没变化 | 页面没刷新 | 手动 F5（列表页不会自动同步后端改动） |
+| 想从头再录一遍 | 数据已被改 | 停服 → 删 `data/blog.db*` → 重启（约 2 秒恢复 12 篇种子文章） |
