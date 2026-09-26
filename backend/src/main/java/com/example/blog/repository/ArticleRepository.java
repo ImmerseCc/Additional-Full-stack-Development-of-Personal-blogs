@@ -30,9 +30,9 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class ArticleRepository {
 
-    /** 列表与详情共用的列清单（含两个实时计数子查询）。 */
+    /** 列表与详情共用的列清单（含两个实时计数子查询；view_count 为表自带列）。 */
     private static final String SUMMARY_COLUMNS = """
-            a.id, a.title, a.summary, a.cover_url, a.status, a.created_at, a.updated_at,
+            a.id, a.title, a.summary, a.cover_url, a.status, a.view_count, a.created_at, a.updated_at,
             (SELECT COUNT(*) FROM like_record l WHERE l.article_id = a.id) AS like_count,
             (SELECT COUNT(*) FROM comment c WHERE c.article_id = a.id) AS comment_count
             """;
@@ -46,6 +46,7 @@ public class ArticleRepository {
             List.of(),
             rs.getInt("like_count"),
             rs.getInt("comment_count"),
+            rs.getInt("view_count"),
             TimeFormats.parse(rs.getString("created_at")),
             TimeFormats.parse(rs.getString("updated_at")));
 
@@ -124,6 +125,18 @@ public class ArticleRepository {
                 + " AND (a.created_at, a.id) > (SELECT b.created_at, b.id FROM article b WHERE b.id = ?)"
                 + " ORDER BY a.created_at ASC, a.id ASC LIMIT 1";
         return jdbcTemplate.query(sql, ADJACENT_ROW_MAPPER, Article.STATUS_PUBLISHED, id).stream().findFirst();
+    }
+
+    /** 阅读数 +1（契约 §四 · 18）：不做去重；返回受影响行数（0 表示文章不存在）。 */
+    public int incrementViewCount(long id) {
+        return jdbcTemplate.update("UPDATE article SET view_count = view_count + 1 WHERE id = ?", id);
+    }
+
+    /** 读取当前阅读数（自增后回读用）。 */
+    public Optional<Integer> findViewCountById(long id) {
+        List<Integer> rows = jdbcTemplate.query("SELECT a.view_count FROM article a WHERE a.id = ?",
+                (rs, rowNum) -> rs.getInt("view_count"), id);
+        return rows.stream().findFirst();
     }
 
     /**
@@ -251,6 +264,7 @@ public class ArticleRepository {
     private static ArticleSummaryVO withTags(ArticleSummaryVO summary, List<String> tags) {
         return new ArticleSummaryVO(
                 summary.id(), summary.title(), summary.summary(), summary.coverUrl(), summary.status(),
-                tags, summary.likeCount(), summary.commentCount(), summary.createdAt(), summary.updatedAt());
+                tags, summary.likeCount(), summary.commentCount(), summary.viewCount(),
+                summary.createdAt(), summary.updatedAt());
     }
 }

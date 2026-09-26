@@ -7,6 +7,7 @@ import com.example.blog.model.ArticleDetailVO;
 import com.example.blog.model.ArticleSummaryVO;
 import com.example.blog.model.ArticleUpdateRequest;
 import com.example.blog.model.PageVO;
+import com.example.blog.model.ViewCountVO;
 import com.example.blog.service.ArticleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -59,6 +60,12 @@ public class ArticleController {
     @GetMapping("/{id}/adjacent")
     public ApiResponse<AdjacentPairVO> adjacent(@PathVariable long id) {
         return ApiResponse.ok(articleService.getAdjacentPair(id));
+    }
+
+    @Operation(summary = "阅读数 +1", description = "每次调用自增 1（不按访客去重，演示级）；文章不存在返回 40004。")
+    @PostMapping("/{id}/views")
+    public ApiResponse<ViewCountVO> addView(@PathVariable long id) {
+        return ApiResponse.ok(articleService.addView(id));
     }
 
     @Operation(summary = "创建文章", description = "成功返回 HTTP 201；标签不存在会自动创建；summary 留空时取正文前 120 字。")

@@ -7,8 +7,10 @@ spring:
 
   datasource:
     # SQLite 单文件数据库；路径相对于启动目录（即在 backend/ 下运行时生成 backend/data/blog.db）
-    # busy_timeout=5000：写入遇到锁时最多排队 5 秒再报错，避免并发场景下直接抛 SQLITE_BUSY（遗留项 9）
-    url: jdbc:sqlite:./data/blog.db?busy_timeout=5000
+    # busy_timeout=5000：写入遇到锁时最多排队 5 秒再报错，避免并发场景下直接抛 SQLITE_BUSY
+    # journal_mode=WAL（阶段 8 批 5，决策 BW）：提升读写并发；运行期伴随 blog.db-wal / blog.db-shm 文件
+    # （该模式持久化在数据库文件里；重置口径见 docs/data-model.md 第五节）
+    url: jdbc:sqlite:./data/blog.db?busy_timeout=5000&journal_mode=WAL
     driver-class-name: org.sqlite.JDBC
     hikari:
       # SQLite 是单写者模型：连接池限制为 1，从源头避免并发写入互相等锁

@@ -2,7 +2,7 @@
 /**
  * 接口层回归脚本（阶段 6 批 1 · 决策 AW）
  *
- * 用途：把 `docs/api-contract.md`（v1.1）里"已实现"的操作固化成可重复运行的用例（阶段 8 批 2 起含评论单条查询 / 修改，批 3 相邻文章，批 4 标签管理），
+ * 用途：把 `docs/api-contract.md`（v1.1）里"已实现"的操作固化成可重复运行的用例（阶段 8 批 2 起含评论单条查询 / 修改，批 3 相邻文章，批 4 标签管理，批 5 阅读数），
  * 覆盖正常路径 + 错误分支（40001 / 40002 / 40004），跑完自动把测试数据清理干净。
  *
  * 用法（零新增依赖，只用 Node 原生 fetch）：
@@ -20,7 +20,7 @@ const OTHER_VISITOR = 'smoke-visitor-000000000002';
 const TIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/;
 
 const ARTICLE_KEYS = ['id', 'title', 'summary', 'coverUrl', 'status', 'tags',
-    'likeCount', 'commentCount', 'createdAt', 'updatedAt'];
+    'likeCount', 'commentCount', 'viewCount', 'createdAt', 'updatedAt'];
 const COMMENT_KEYS = ['id', 'articleId', 'authorName', 'content', 'createdAt'];
 const PAGE_KEYS = ['items', 'page', 'size', 'total', 'totalPages'];
 
@@ -372,6 +372,28 @@ async function main() {
         check('清理后最新一篇的 next 回到 null', backToNormal.json?.data?.next === null);
     }
 
+    // ── §四·18 阅读数（阶段 8 批 5）───────────────────────────────
+    group('§四·18 阅读数：POST /api/articles/{id}/views');
+    {
+        const before = (await api('GET', '/articles/1')).json?.data?.viewCount;
+
+        const v1 = await api('POST', '/articles/1/views');
+        check('HTTP 200 且 code=0', v1.status === 200 && okBody(v1));
+        check('返回 {viewCount} 且较之前 +1', hasAll(v1.json?.data, ['viewCount'])
+            && v1.json.data.viewCount === before + 1, `实际 before=${before} after=${v1.json?.data?.viewCount}`);
+
+        const v2 = await api('POST', '/articles/1/views');
+        check('再次调用再 +1（不按访客去重，演示级语义）', v2.json?.data?.viewCount === before + 2);
+
+        const detailAfter = await api('GET', '/articles/1');
+        check('GET 详情无副作用：viewCount 等于自增后的值', detailAfter.json?.data?.viewCount === before + 2);
+
+        const list = await api('GET', '/articles?size=1');
+        check('列表项含 viewCount 字段（契约 §2.2）', typeof list.json?.data?.items?.[0]?.viewCount === 'number');
+
+        checkError('文章不存在 id=99999', await api('POST', '/articles/99999/views'), 404, 40004);
+    }
+
     // ── §四·13–15 点赞 ────────────────────────────────────────────
     group('§四·13–15 点赞：状态 / 点赞 / 取消（两端幂等）');
     {
@@ -538,5 +560,5 @@ console.log(`\n${'-'.repeat(60)}`);
 console.log(failures.length === 0
     ? `全部通过：${pass}/${total} 项断言`
     : `失败 ${failures.length} 项 / 共 ${total} 项断言：\n- ${failures.join('\n- ')}`);
-console.log(`契约未覆盖：POST /api/articles/{id}/views（契约 §四·18，阶段 8 批 5 落地）`);
+console.log('契约覆盖：§四 · 1–18 全部实现（阶段 8 批 5 收口），未覆盖项清零。');
 process.exit(failures.length === 0 ? 0 : 1);

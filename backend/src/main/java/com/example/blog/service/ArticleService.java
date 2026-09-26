@@ -12,6 +12,7 @@ import com.example.blog.model.ArticleDetailVO;
 import com.example.blog.model.ArticleSummaryVO;
 import com.example.blog.model.ArticleUpdateRequest;
 import com.example.blog.model.PageVO;
+import com.example.blog.model.ViewCountVO;
 import com.example.blog.repository.ArticleRepository;
 import java.util.Arrays;
 import java.util.List;
@@ -105,6 +106,20 @@ public class ArticleService {
 
     private AdjacentVO adjacentAfter(long id) {
         return articleRepository.findAdjacentAfter(id).orElse(null);
+    }
+
+    /**
+     * 阅读数 +1（契约 §四 · 18，决策 BU）：不做按访客去重，每次调用都计一次（演示级语义）；
+     * GET 详情保持无副作用，计数只经本方法发生。
+     */
+    @Transactional
+    public ViewCountVO addView(long id) {
+        if (articleRepository.incrementViewCount(id) == 0) {
+            throw new BizException(ErrorCode.NOT_FOUND, "文章不存在：id=" + id);
+        }
+        int viewCount = articleRepository.findViewCountById(id)
+                .orElseThrow(() -> new BizException(ErrorCode.SERVER_ERROR, "阅读数回读失败：id=" + id));
+        return new ViewCountVO(viewCount);
     }
 
     /** 创建文章（契约 §四 · 4）：标签不存在则自动创建，返回列表项（HTTP 201 由 controller 决定）。 */

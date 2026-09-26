@@ -1,8 +1,8 @@
 # 当前状态
 
 > 本文件是项目进度的**唯一实时快照**，每个阶段/批次结束后同步更新；**每个新会话开始时，请先读本文件**。
-> 最后更新：**阶段 8「功能迭代二：后端能力」批 0–批 4 已完成 —— 批 4 标签管理三接口（`POST` / `PUT` / `DELETE /api/tags`）已实现并实测（`smoke` **137/137**），**`40009` 首次可达**（闭环遗留 28）；下一步批 5（阅读数 + WAL）**。阶段 0–7 全部完成并入库，其中**阶段 5 / 阶段 6 / 阶段 7 均已由作者人工验收通过**（阶段 7 于 2026-09-26 验收；验收后另有批 7 / 批 8 两条评论体验修订并经作者二次确认）。
-> **当前阶段：阶段 8 —— 批 4 已完成（标签管理 + `40009`）；下一步批 5（后端：阅读数 + WAL + `50000` / `50001` / `SQLITE_BUSY` 演练）**。
+> 最后更新：**阶段 8「功能迭代二：后端能力」批 0–批 5 已完成 —— 批 5 阅读数（`POST /api/articles/{id}/views` + `viewCount`）、WAL（`journal_mode=wal` 实测）、「未覆盖项」演练（`40009` / `50000` / `50001` / `SQLITE_BUSY` 全部拿到真实触发记录，`smoke` **143/143**）**。阶段 0–7 全部完成并入库，其中**阶段 5 / 阶段 6 / 阶段 7 均已由作者人工验收通过**（阶段 7 于 2026-09-26 验收；验收后另有批 7 / 批 8 两条评论体验修订并经作者二次确认）。
+> **当前阶段：阶段 8 —— 批 5 已完成（阅读数 + WAL + 未覆盖项闭环）；下一步批 6（前端最小接入：上下篇 / 评论编辑 / 阅读数）**。
 > **运行状态**：**前后端均在运行** —— 后端 8080、前端 5173；数据库为种子状态（`article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0`，全部演练数据已还原）。
 
 ---
@@ -105,7 +105,7 @@
 
 ## 三、待确认 / 待执行
 
-1. **阶段 8（功能迭代二：后端能力）已开工**：分批方案（批 0–批 8）与决策 BR–BX 经作者确认；**批 0–批 4 完成 —— 批 4 标签管理三接口 + `40009` 首次可达（闭环遗留 28，`smoke` 137/137）；下一步批 5（阅读数 + WAL + 未覆盖项演练）**。确认后的范围：
+1. **阶段 8（功能迭代二：后端能力）已开工**：分批方案（批 0–批 8）与决策 BR–BX 经作者确认；**批 0–批 5 完成 —— 后端能力全部落地（评论单条查询 / 修改、相邻文章、标签管理 + `40009`、阅读数、WAL；`40009` / `50000` / `50001` / `SQLITE_BUSY` 均已有真实触发记录，`smoke` 143/143）；下一步批 6（前端最小接入）**。确认后的范围：
    - 批 2：评论单条查询 / 修改（`GET` / `PUT /api/comments/{id}`，`visitorId` 校验）；
    - 批 3：相邻文章（`GET /api/articles/{id}/adjacent` + 详情接口带出 `prev` / `next`，闭环遗留 19）；
    - 批 4：标签管理 `POST` / `PUT` / `DELETE /api/tags`，**启用 `40009`**（闭环遗留 28）；
@@ -166,6 +166,7 @@
 | 2 ✅ | 后端：评论单条查询 / 修改 | 新增 `GET` / `PUT /api/comments/{id}`（`visitorId` 归属校验、仅改 `content`、不加 `updatedAt`）；`smoke` **112/112**（+15）；编译 37 源文件；手动实测 9 步 |
 | 3 ✅ | 后端：相邻文章 + 详情 `prev` / `next` | 新增 `GET /api/articles/{id}/adjacent`（只取 `PUBLISHED`、行值比较 `(created_at, id)`）；详情接口同步带出（决策 BT）；`smoke` **123/123**（+11）；手动实测 10 步 |
 | 4 ✅ | 后端：标签管理 + 启用 `40009` | 新增 `POST` / `PUT` / `DELETE /api/tags`（重名 409/`40009`、不存在 `40004`、级联解除关联）；**闭环遗留 28**；`smoke` **137/137**（+14）；手动实测 12 步 |
+| 5 ✅ | 后端：阅读数 + WAL + 未覆盖项演练 | 新增 `POST /api/articles/{id}/views`（`viewCount` 进两个 VO，GET 无副作用）；JDBC URL 切 WAL（`journal_mode=wal` 实测、`-wal` / `-shm` 出现）；**`40009` / `50000` / `50001` / `SQLITE_BUSY` 真实触发留档**（锁内写等待 **5.1s** → `50001`，锁内读 **3.6ms** 200；探针验证后已删除）；`smoke` **143/143** |
 
 ---
 
@@ -210,14 +211,14 @@
 | Node / npm | `node v24.21.0`、`npm 11.19.0` |
 | 前端依赖 | vue 3.5.43、vue-router 5.3.1、pinia 4.0.3、markdown-it 15.0.2、highlight.js 11.12.0、dompurify 3.4.15、vite 8.3.0、@vitejs/plugin-vue 6.0.9（**阶段 6 / 阶段 7 均未新增依赖**） |
 | 后端依赖 | Spring Boot 4.1.1、Spring 7.0.9、Tomcat 11.0.24、sqlite-jdbc 3.53.4.0、springdoc 3.1.1、Jackson 3、HikariCP |
-| 数据库 | `backend/data/blog.db`；**6 张表（5 张业务表 + `sqlite_sequence`）＋ 8 个索引（5 个显式 `idx_*` + 3 个自动索引）**；**阶段 8 批 0 复核** `article=12`、`tag=8`、`article_tag=23`、`comment=0`、`like_record=0`；`journal_mode=delete`（批 5 将启用 WAL）；`busy_timeout=5000`（应用连接由 JDBC URL 设定） |
+| 数据库 | `backend/data/blog.db`；**6 张表（5 张业务表 + `sqlite_sequence`）＋ 8 个索引（5 个显式 `idx_*` + 3 个自动索引）**；**阶段 8 批 5 复核** `article=12`、`tag=8`、`article_tag=23`、`comment=0`、`like_record=0`（`view_count` 已复位为 0）；**`journal_mode=wal`（阶段 8 批 5 起，伴随 `-wal` / `-shm` 文件）**；`busy_timeout=5000`（应用连接由 JDBC URL 设定） |
 | 前端静态资源 | `frontend/public/favicon.svg` + `images/covers/*.svg`（12 张）+ `images/articles/markdown-pipeline.svg` |
 | 演示素材 | `docs/demo/`：阶段 6 归档 **15 张**（`stage6-01…15`）+ **阶段 7 归档 10 张**（`stage7-01` 进度条中间态 / `02` 底部 + 回到顶部 / `03` 暗色 / `04` 拆包后详情 / `05` 无限滚动到底 / `06` 窄屏折叠目录 / `07` 评论已发表 / `08` 删除后提示消失 / `09` 响应式 1920 / `10` 暗色 1920） |
 | 服务状态 | **前后端均在运行**（后端 8080 / 前端 5173）；阶段 8 批 0 复核：健康检查 `UP`、前端 `HTTP 200`；如需停服见第八节贴士 ③ |
 | 网络 | `start.spring.io`、`registry.npmjs.org`、`repo.maven.apache.org`、`repo1.maven.org` 可达；`github.com` 不可达 |
-| Git 仓库 | 分支 `main`；**阶段 7 提交链**：`85e5326`（批 0）→ `bb49776`（批 1）→ `fd6ba43`（批 2）→ `f35008d`（批 3）→ `3f1b786`（批 4）→ `cc1f0b8`（批 5）→ `3ff3027`（批 6）→ `bd227ae`（批 7）→ `1904279`（批 8）→ `9c9d2ba`（阶段收尾文档）；**阶段 8 提交链**：`ada2788`（批 0）→ `5531129`（批 1）→ `19f0f07`（批 2）→ `cbb3ed9`（批 3）→ 批 4 提交见 `git log` 最新一条 |
-| 前端构建基线 | **阶段 8 批 0 实测**：`npm run build` → **153 模块 / 229ms**（首跑 302ms 含冷启动）；`index-*.js 55.57 kB / gzip 22.34 kB`、详情 shell `ArticleDetailView 19.83 kB / gzip 7.29 kB`、`MarkdownRenderer 281.34 kB / gzip 104.55 kB`、共享 chunk `_plugin-vue_export-helper 70.36 kB / gzip 27.28 kB`、`ArticlesView 8.63 kB`、`AboutView 5.03 kB` |
-| 接口回归基线 | **阶段 8 批 4 实测**：`npm run smoke` → `全部通过：137/137 项断言`（批 4 新增「标签管理」14 项，**`40009` 首次可达**）；脚本末尾"契约未覆盖"清单只剩：阅读数（批 5 落地） |
+| Git 仓库 | 分支 `main`；**阶段 7 提交链**：`85e5326`（批 0）→ `bb49776`（批 1）→ `fd6ba43`（批 2）→ `f35008d`（批 3）→ `3f1b786`（批 4）→ `cc1f0b8`（批 5）→ `3ff3027`（批 6）→ `bd227ae`（批 7）→ `1904279`（批 8）→ `9c9d2ba`（阶段收尾文档）；**阶段 8 提交链**：`ada2788`（批 0）→ `5531129`（批 1）→ `19f0f07`（批 2）→ `cbb3ed9`（批 3）→ `fdf84a1`（批 4）→ 批 5 提交见 `git log` 最新一条 |
+| 前端构建基线 | **阶段 8 批 0 实测**（前端源码批 0–批 5 未改动）：`npm run build` → **153 模块 / 229ms**（首跑 302ms 含冷启动）；`index-*.js 55.57 kB / gzip 22.34 kB`、详情 shell `ArticleDetailView 19.83 kB / gzip 7.29 kB`、`MarkdownRenderer 281.34 kB / gzip 104.55 kB`、共享 chunk `_plugin-vue_export-helper 70.36 kB / gzip 27.28 kB`、`ArticlesView 8.63 kB`、`AboutView 5.03 kB` |
+| 接口回归基线 | **阶段 8 批 5 实测**：`npm run smoke` → `全部通过：143/143 项断言`（批 5 新增「阅读数」6 项；**未覆盖项清零**）；Swagger 操作数实测 **20** |
 
 ---
 

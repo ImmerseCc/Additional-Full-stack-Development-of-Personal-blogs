@@ -877,3 +877,17 @@
 - 验证命令与结果（均为实测输出）：`./mvnw -B -ntp compile` → `BUILD SUCCESS`；`npm run smoke` → `全部通过：137/137 项断言`；手动实测 12 步见第 6 点。
 - 遗留问题：**闭环遗留 28（`40009` 不可达）**；标签管理的前端入口留批 7（`/studio`，决策 BR）。
 - 下一步：**批 5 —— 后端：阅读数 + WAL + 未覆盖项演练**（决策 BU / BW / BX：新增 `POST /api/articles/{id}/views` 与 `viewCount` 字段、JDBC URL 加 `journal_mode=WAL`、构造 `50000` / `50001` / `SQLITE_BUSY` 演练），做完停下等作者确认。
+
+### 阶段 8：功能迭代二（批 5：阅读数 + WAL + 未覆盖项演练）
+- 我的提示词摘要："**4 通过，请继续**"（作者确认批 4 并授权批 5）。
+- AI 做了什么：
+  1. **阅读数（决策 BU）**：新增 `ViewCountVO`；`ArticleSummaryVO` / `ArticleDetailVO` 增 `viewCount` 字段（进列表与详情）；`ArticleRepository` 增 `incrementViewCount`（`UPDATE article SET view_count = view_count + 1`，返回 0 行即不存在）与 `findViewCountById`；`ArticleService.addView`（`@Transactional`，不存在抛 40004）；`ArticleController` 增 `POST /api/articles/{id}/views`；
+  2. **WAL（决策 BW）**：`backend/src/main/resources/application.yml` 的 JDBC URL 追加 `journal_mode=WAL`（注释同步说明 `-wal` / `-shm` 与重置口径）；**未改 `schema.sql`**；
+  3. **未覆盖项演练（决策 BX）**：临时探针 `TempProbeController` 构造 **`50000`**（实测 `HTTP 500 / code 50000 / 服务端未预期异常`）；临时程序 `BusyHolder` 持有写事务 → **`SQLITE_BUSY` → `50001`**（锁内写等待 **5.11s** 后 `HTTP 500 / code 50001`，锁内读 **3.6ms** 返回 200，解锁后写入 **201** 恢复）；**探针（源码 + 编译产物）验证后已删除**，`/api/__probe/boom` 复测 **404 / 40004**；
+  4. **实测读数**：阅读数 `+1 → 1`、`+2 → 2`（详情回读一致、`GET` 无副作用、列表项含 `viewCount`、不存在 404/40004）；`DbCheck` 复核 **`journal_mode = wal`**、`blog.db-wal` / `blog.db-shm` 出现；
+  5. **`smoke.mjs`**：`ARTICLE_KEYS` 增 `viewCount`；新增「§四·18 阅读数」**6 项断言**；末尾"契约未覆盖"行改为"**契约覆盖：§四 · 1–18 全部实现（未覆盖项清零）**"；头注释同步；**`npm run smoke` → 全部通过：143/143 项断言**；Swagger 操作数实测 **20**（README 已同步）；
+  6. **数据还原**：演练与回归造成的 `view_count` 漂移用临时程序复位（`reset rows = 1`，剩余非零 = 0），终核 `12 / 8 / 23 / 0 / 0`。
+- 改动文件：新增（**完整**）`backend/src/main/java/com/example/blog/model/ViewCountVO.java`；修改（**完整**）`backend/src/main/java/com/example/blog/model/ArticleSummaryVO.java`、`backend/src/main/java/com/example/blog/model/ArticleDetailVO.java`、`backend/src/main/java/com/example/blog/repository/ArticleRepository.java`、`backend/src/main/java/com/example/blog/service/ArticleService.java`、`backend/src/main/java/com/example/blog/controller/ArticleController.java`、`backend/src/main/resources/application.yml`、`frontend/scripts/smoke.mjs`；文档 `README.md`、`docs/{current-state,collaboration-log,ai-log}.md`；临时文件 `backend/target/tmp-check/{TempProbeController.java+class（已删）, BusyHolder.java, view-probe-manual-test.mjs, ResetViewCount.java}`（gitignore 内，不提交）。**未新增依赖、未改契约、未改表结构**。
+- 验证命令与结果（均为实测输出）：见第 3–5 点；`npm run smoke` → `全部通过：143/143 项断言`。
+- 遗留问题：**闭环遗留 9（WAL）**；"未覆盖项"（`50000` / `50001` / `SQLITE_BUSY`）**全部拿到真实触发记录**；如实登记：`DbCheck` 直连会话显示 `busy_timeout = 3000` 是该连接自身默认值（应用连接 5000 由 JDBC URL 设定），与阶段 7 批 0 同一说明，**非回归**。
+- 下一步：**批 6 —— 前端最小接入**（详情页上下篇导航 + 阅读数显示与上报 + 评论区「编辑」入口；涉及 `ArticleDetailView.vue` / `CommentItem.vue` / `CommentSection.vue` / `api/{articles,comments}.js` / `base.css`），做完停下等作者确认。
