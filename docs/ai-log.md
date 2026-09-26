@@ -1107,3 +1107,16 @@
 - 验证命令与结果：见第 2 点（均为实测输出）。
 - 遗留问题：**推送未完成**；仓库本身已处于"随时可推"状态（干净、`main`、无 remote）。
 - 下一步：作者通知"可建联"后 → 按所选通道执行：`ssh-keygen` 生成密钥 → 作者登记公钥 → `~/.ssh/config` 配 `Host github.com → HostName ssh.github.com / Port 443` → `git remote add origin …` → `git push -u origin main`（或代理+PAT 的 HTTPS 直推 / bundle 换机推送）。
+
+### 阶段 9 · 收尾后：GitHub 推送（**已完成**）
+- 我的提示词摘要："**可以了**"（作者恢复网络后通知可执行）→ "**好了**"（作者已建好空仓库）。
+- AI 做了什么：
+  1. **复测通道（实测输出）**：`https://github.com` → **HTTP 200（1.06s）**、`api.github.com` → 200、`git ls-remote https://github.com/octocat/Hello-World.git` → 成功返回 commit、`github.com:22` → **可连**（网络已恢复；此前 `github.com:443` 为 TCP 建连失败，见本条的前一轮记录）；
+  2. **定位目标仓库**：从本地提交身份（`ImmerseCc <1903205974@qq.com>`）确认账号 → `api.github.com` 查询，账号下原本只有无关的 `learning01`，项目仓库 **404（未创建）**；提示作者按"不勾选 README/.gitignore/License"的方式新建；
+  3. **建仓核对**：`api.github.com` 复核到 **`ImmerseCc/Additional-Full-stack-Development-of-Personal-blogs`**（创建于 2026-09-26、空仓库、默认分支 `main`）；
+  4. **配置远端并推送**：`git remote add origin https://github.com/ImmerseCc/Additional-Full-stack-Development-of-Personal-blogs.git` → `git push -u origin main` → `* [new branch] main -> main`、`branch 'main' set up to track 'origin/main'`（**未要求手工输入凭据**：本机已配置的 Git Credential Manager 直接完成了认证）；
+  5. **推送后核对**：本地 `HEAD` = 远端 `main` = **`c60e370`**；`git rev-list --count origin/main` = **75**；`git status -sb` 显示 `## main...origin/main`；`api.github.com` 复核最新提交同为 `c60e370`。
+- 改动文件：`README.md`（已知问题 1 改为"已恢复并完成推送"）、`docs/current-state.md`（§六 Git 仓库行补推送信息）、`docs/ai-log.md`（本条）。**未改动业务代码、未新增依赖、未生成任何密钥**。
+- 验证命令与结果（均为实测输出）：见第 1、5 点。
+- 遗留问题：无。**仓库现已具备远端**：后续每次提交后 `git push` 即可同步（凭据已在系统凭据管理器）。
+- 下一步：项目 0–9 路线图 + 交付文档 + 演示素材 + 远端同步**全部完成**；后续按作者需要继续（可选遗留项见 `docs/current-state.md` §五）。

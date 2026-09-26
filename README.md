@@ -236,7 +236,7 @@ npm run dev
 
 ## 七、已知问题与风险（随阶段更新）
 
-1. **GitHub 当前不可达（2026-09-26 复核）**：`github.com:443` 在本机网络下 **TCP 建连即失败**（DNS 可解析到 `20.205.243.166`，网页与 `git ls-remote` 均超时；IPv6 与其它 GitHub IP 亦不通），会导致从 GitHub 拉取依赖或推送仓库失败；**但 `api.github.com` 可达（HTTP 200）、`ssh.github.com:443` 的 SSH 握手亦可成功** —— 因此"推送"在配置 SSH 密钥（走 443 端口）后仍可行，本仓库当前**尚未 push**（无 remote、无凭据，等作者通知可建联后执行）。完整记录见 `docs/debug-log.md` 报错记录 1；
+1. ~~GitHub 不可达~~ → **已恢复并完成推送（2026-09-26）**：`github.com`、`git ls-remote`、`github.com:22` 均已正常；本仓库已推送到 **https://github.com/ImmerseCc/Additional-Full-stack-Development-of-Personal-blogs**（远端 `origin`，分支 `main`，**75 个提交**，`main...origin/main` 上游跟踪已建立）。此前"连接被重置"的历史记录见 `docs/debug-log.md` 报错记录 1；
 2. ~~JDK 26 与 Spring Boot 4.1.1 兼容性未实测~~ **已验证**：实测可正常启动（`Starting BlogApplication using Java 26.0.2.1`，Spring Boot v4.1.1 / Spring v7.0.9 / Tomcat 11.0.24），无需改回 Temurin 21；
 3. **项目目录路径含空格**（`D:\code\Additional Full-stack Development of Personal blogs`）：目前判定为低风险，若工具出现异常再考虑迁移；
 4. ~~springdoc-openapi 与 Spring Boot 4.x 适配未核对~~ **已验证**：`springdoc-openapi-starter-webmvc-ui 3.1.1` 与 Boot 4.1.1 适配，`/v3/api-docs` 与 `/swagger-ui/index.html` 均返回 200；
