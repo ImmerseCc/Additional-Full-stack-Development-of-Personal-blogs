@@ -1038,3 +1038,16 @@
 - 验证命令与结果：本轮为文档轮，**未运行新的构建 / 接口命令**；沿用批 4 的实测值（`npm run smoke` **145/145**、`npm run build` **371ms**、数据 `12 / 8 / 23 / 0 / 0`）。
 - 遗留问题：见 `docs/current-state.md` 第五节（33 条不变）；**录屏待作者按 `docs/demo/README.md` 完成**。
 - 下一步：**批 6 —— 收尾与验收清单**：终测（`build` / `smoke` / 数据终核 / `view_count` 复位 / 服务状态）；交付物总表（源码 / README / 关键提示词 6 组 / 报错记录 10 条 / 审计记录 A+B / 演示脚本与 39 张素材）；输出验收清单供作者逐条验收（**不代签**）；阶段记录与 `current-state.md` 在验收后收尾。做完停下等作者确认。
+
+### 阶段 9：报错记录整理 + 前后端专项审计 + 交付文档与演示脚本（批 6：收尾与验收清单）
+- 我的提示词摘要："**批 6 开始**"（作者授权批 6 —— 整阶段收尾：终测 + 数据复位 + 交付物总表 + **验收清单**（验收结论由作者签））。
+- AI 做了什么：
+  1. **终测（实测输出）**：`npm run build` → **`✓ built in 300ms`**（`index-*.js 57.15 kB / gzip 22.95 kB`、详情 shell `ArticleDetailView 23.12 kB`、`MarkdownRenderer 281.34 kB / gzip 104.55 kB`、共享 chunk `65.48 kB`）；`npm run smoke` → **全部通过：145/145 项断言**（跑完数据回种子状态）；两端仍在运行（后端 PID 39716 / 前端 38320）；
+  2. **数据复位（决策 CF）**：用临时程序 `ResetViewCount`（`backend/target/tmp-check/`，gitignore 内不提交）把 `view_count` 归零 —— `reset rows = 3`、`non-zero left = 0`；随后 `DbCheck` 直读终核：`article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0`、**6 表 8 索引**、`journal_mode=wal`、`ARTICLE_STATUS PUBLISHED = 12`；
+  3. **验收清单（13 条）写入 `docs/current-state.md` §一**：替换原「阶段 8 验收记录」，逐条给出 AI 侧自测证据（README 启动 / 145 项 smoke / 构建 / 审计报告 12 项 / 批 2 修复抽查 / 邮箱口径 / 遗留 32 复现方式 / 对比度 12 组 / 并发 5.085s→50001 / 报错记录 10 条 / 关键提示词 6 组 / 演示脚本与 39 张素材 / 数据终核含 `view_count=0`）；**明确"待作者逐条验收、AI 不代签"**；
+  4. **交付物总表**与**文档状态同步**：`README.md` 顶部状态块改为"阶段 9 批 0–批 6 全部完成 —— 待作者验收"；`docs/current-state.md` §三 / §四 补批 6 行、§六 刷新数据库终核与基线；
+  5. **验收后的收尾约定**（写入 checklist 说明）：验收通过后由 AI 补写 `docs/collaboration-log.md` 的阶段 9 阶段记录，并整份覆盖 `docs/current-state.md`（沿用阶段 5–8 的惯例）。
+- 改动文件：`docs/current-state.md`（§一 验收清单替换、§三 / §四 批 6 行、§六 基线）、`README.md`（状态块）、`docs/ai-log.md`（本条）。**均为完整文档；无业务代码改动、未新增依赖。**
+- 验证命令与结果（均为实测输出）：见第 1、2 点。
+- 遗留问题：见 `docs/current-state.md` 第五节（33 条，本阶段未新增）；**录屏与阶段验收待作者完成**。
+- 下一步：**等作者按 13 条清单验收**；通过后 → 补写阶段 9 阶段记录 + 整份覆盖状态文件；未通过项按作者反馈返工。
