@@ -891,3 +891,17 @@
 - 验证命令与结果（均为实测输出）：见第 3–5 点；`npm run smoke` → `全部通过：143/143 项断言`。
 - 遗留问题：**闭环遗留 9（WAL）**；"未覆盖项"（`50000` / `50001` / `SQLITE_BUSY`）**全部拿到真实触发记录**；如实登记：`DbCheck` 直连会话显示 `busy_timeout = 3000` 是该连接自身默认值（应用连接 5000 由 JDBC URL 设定），与阶段 7 批 0 同一说明，**非回归**。
 - 下一步：**批 6 —— 前端最小接入**（详情页上下篇导航 + 阅读数显示与上报 + 评论区「编辑」入口；涉及 `ArticleDetailView.vue` / `CommentItem.vue` / `CommentSection.vue` / `api/{articles,comments}.js` / `base.css`），做完停下等作者确认。
+
+### 阶段 8：功能迭代二（批 6：前端最小接入 —— 上下篇 / 阅读数 / 评论行内编辑）
+- 我的提示词摘要："**批 5 通过，请继续**"（作者确认批 5 并授权批 6）。
+- AI 做了什么：
+  1. **接入层**：`frontend/src/api/articles.js` 增 `postArticleView(id)`（`POST /views`），`fetchArticleDetail` 的 JSDoc 更新（prev / next 已实装、带 `viewCount`）；`frontend/src/api/comments.js` 增 `updateComment(id, content, visitorId)`（`PUT`），头注释更新为契约 §4.8–4.12；
+  2. **详情页**（`frontend/src/views/ArticleDetailView.vue`）：meta 行新增「· 阅读 N」；`load()` 里 **fire-and-forget** 调 `postArticleView` 并用返回值刷新显示（失败静默，不影响阅读）；正文下方新增**上下篇导航**（`article.prev` / `article.next`，只含已发布；缺一侧用占位保持对称；窄屏自动堆叠）；
+  3. **评论行内编辑**（`frontend/src/components/CommentItem.vue` + `CommentSection.vue`）：本机账本内的评论（`can-edit`）出现「编辑」按钮 → 行内 textarea（预填当前内容、自动聚焦、`maxlength=1000`）→「保存修改」调 `updateComment` → 用接口返回值就地替换该条；空 / 超长本地拦截；`40004` 时回退只读并提示；`onUpdated` 只替换单条、不重拉列表；
+  4. **构建**：`npm run build` → **242ms**，详情 shell chunk **19.83 → 22.87 kB**（gzip 8.01 kB，新增导航 / 编辑逻辑）；
+  5. **真实浏览器实测**（本机浏览器）：① `/articles/1` 首屏 meta「阅读 2」（每次进入 +1，刷新再 +1，接口侧复核一致）；② 页底**「下一篇 → 技术选型复盘…」**卡片（最早篇无「上一篇」，符合"只取 `PUBLISHED` + 首尾为 null"）；③ **点击「下一篇」跳转到 `/articles/2`**，该页上下篇**双向**正确（← 文章 1 / 文章 3）；④ **评论编辑全链路**：表单发表（id=48，昵称复用本机记忆 `XSS演练者`）→「编辑」→ 行内 textarea 预填 → 全选改写 → 「保存修改」→ **接口复核 content 已更新**；⑤ **删除流**（行内二次确认）→ 列表回空态、接口 `total=0`；⑥ **375px**：导航上下堆叠、无破版；⑦ 截图归档 `docs/demo/stage8-01-adjacent-nav.png`、`stage8-02-comment-edit.png`、`stage8-03-adjacent-nav-375.png`；
+  6. **数据还原**：`view_count` 用临时程序复位（`reset rows = 2`，剩余非零 = 0）；终核 `12 / 8 / 23 / 0 / 0`、`journal_mode=wal`；`npm run smoke` 复跑 **143/143**。
+- 改动文件：修改（**完整**）`frontend/src/api/articles.js`、`frontend/src/api/comments.js`、`frontend/src/views/ArticleDetailView.vue`、`frontend/src/components/CommentItem.vue`、`frontend/src/components/CommentSection.vue`；新增截图 `docs/demo/stage8-01…03-*.png`；文档 `README.md`、`docs/{current-state,collaboration-log,ai-log}.md`。**未新增依赖、未改契约、未改后端**。
+- 验证命令与结果（均为实测输出）：`npm run build` → `✓ built in 242ms`（`ArticleDetailView 22.87 kB │ gzip 8.01 kB`）；`npm run smoke` → `全部通过：143/143 项断言`；浏览器 6 项见第 5 点。
+- 遗留问题：**闭环遗留 19 的前端部分（详情页上下篇渲染）**；如实登记两处工具现象：① 新标签首次打开时主区一度为空，**重载后正常**（判定为 Vite HMR 中间态，非代码缺陷）；② `page.visual.snapshot` 偶发 `PAGE_NOT_READY`，重试即成功（工具抖动，非项目缺陷）。
+- 下一步：**批 7 —— 极简管理入口 `/studio`**（决策 BR：隐藏路由；文章新建 / 编辑 / 删除 + `PUBLISHED/DRAFT` 切换 + 标签管理；Markdown 文本框、不做富文本、不做登录，页面标注演示级无鉴权），做完停下等作者确认。

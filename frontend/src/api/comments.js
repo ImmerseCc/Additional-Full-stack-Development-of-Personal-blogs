@@ -1,5 +1,5 @@
-// 评论接口（阶段 5 批 1）：字段名与语义严格按 docs/api-contract.md 第 2.4、4.8、4.9、4.12 节。
-// 契约要点：authorEmail 可选、只存不回传；删除必须带上创建时的 visitorId 做归属校验，不匹配按 40004 处理。
+// 评论接口（阶段 5 批 1；阶段 8 批 2 补单条查询 / 修改）：字段名与语义严格按 docs/api-contract.md 第 2.4、4.8–4.12 节。
+// 契约要点：authorEmail 可选、只存不回传；修改 / 删除都必须带上创建时的 visitorId 做归属校验，不匹配按 40004 处理。
 import { request } from './http'
 import { ApiError } from './error'
 
@@ -49,4 +49,20 @@ export async function deleteComment(commentId, visitorId) {
     throw new ApiError(`评论 ID 不合法：${commentId}`)
   }
   return request(`/comments/${value}`, { method: 'DELETE', body: { visitorId } })
+}
+
+/**
+ * 修改评论：PUT /api/comments/{id}（阶段 8 批 2 新增接口）
+ * 只改 content（1–1000 字）；visitorId 须与创建时一致，不匹配抛 40004。
+ * @param {number|string} commentId 评论 ID
+ * @param {string} content 新内容
+ * @param {string} visitorId 创建该评论时使用的访客标识
+ * @returns {Promise<object>} 更新后的 CommentVO
+ */
+export async function updateComment(commentId, content, visitorId) {
+  const value = Number(commentId)
+  if (!Number.isInteger(value) || value < 1) {
+    throw new ApiError(`评论 ID 不合法：${commentId}`)
+  }
+  return request(`/comments/${value}`, { method: 'PUT', body: { content, visitorId } })
 }

@@ -18,7 +18,7 @@ import LikeButton from '@/components/LikeButton.vue'
 import ReadingProgress from '@/components/ReadingProgress.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
-import { fetchArticleDetail } from '@/api/articles'
+import { fetchArticleDetail, postArticleView } from '@/api/articles'
 import { formatDate } from '@/utils/date'
 import { useScrollSpy } from '@/utils/scrollSpy'
 
@@ -82,6 +82,15 @@ async function load() {
     article.value = data
     // 拿到真实标题后覆盖路由的通用标题，浏览器标签页与历史记录更好读
     document.title = `${data.title} · 个人博客`
+    // 阅读数上报（阶段 8 批 6，决策 BU）：fire-and-forget，失败不影响阅读；
+    // 成功后用接口返回值刷新显示（计数一律以后端为准）
+    postArticleView(data.id)
+      .then((view) => {
+        if (article.value && article.value.id === data.id) {
+          article.value.viewCount = view.viewCount
+        }
+      })
+      .catch(() => {})
   } catch (caught) {
     error.value = caught
     article.value = null
@@ -141,6 +150,7 @@ onMounted(load)
             <p class="detail__meta">
               <time :datetime="article.createdAt">创建于 {{ formatDate(article.createdAt) }}</time>
               <template v-if="updated"> · 更新于 {{ formatDate(article.updatedAt) }}</template>
+              <span> · 阅读 {{ article.viewCount }}</span>
               <span> · 点赞 {{ article.likeCount }}</span>
               <span> · 评论 {{ article.commentCount }}</span>
             </p>
@@ -206,6 +216,28 @@ onMounted(load)
               @count-change="onLikeCountChange"
             />
           </div>
+
+          <nav v-if="article.prev || article.next" v-reveal class="detail__adjacent" aria-label="相邻文章">
+            <RouterLink
+              v-if="article.prev"
+              class="detail__adjacent-item"
+              :to="`/articles/${article.prev.id}`"
+            >
+              <span class="detail__adjacent-label">← 上一篇</span>
+              <span class="detail__adjacent-title">{{ article.prev.title }}</span>
+            </RouterLink>
+            <span v-else class="detail__adjacent-item detail__adjacent-item--empty" aria-hidden="true"></span>
+
+            <RouterLink
+              v-if="article.next"
+              class="detail__adjacent-item detail__adjacent-item--next"
+              :to="`/articles/${article.next.id}`"
+            >
+              <span class="detail__adjacent-label">下一篇 →</span>
+              <span class="detail__adjacent-title">{{ article.next.title }}</span>
+            </RouterLink>
+            <span v-else class="detail__adjacent-item detail__adjacent-item--empty" aria-hidden="true"></span>
+          </nav>
 
           <footer v-reveal class="detail__foot">
             <RouterLink to="/articles">← 返回文章列表</RouterLink>
@@ -393,5 +425,49 @@ onMounted(load)
   padding-top: 20px;
   border-top: 1px solid var(--color-border);
   font-size: 15px;
+}
+
+/* 上下篇导航（阶段 8 批 6）：两栏等宽，窄屏自动堆叠；缺一侧时占位保持对称 */
+.detail__adjacent {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.detail__adjacent-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  background-color: var(--color-bg-soft);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  transition: border-color var(--duration-fast) ease;
+}
+
+.detail__adjacent-item:hover {
+  border-color: var(--color-accent);
+}
+
+.detail__adjacent-label {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.detail__adjacent-title {
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.detail__adjacent-item--next {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.detail__adjacent-item--empty {
+  background-color: transparent;
+  border-color: transparent;
 }
 </style>

@@ -42,7 +42,8 @@ export async function fetchArticles(params = {}) {
 /**
  * 文章详情：GET /api/articles/{id}
  * @param {number|string} id 文章 ID
- * @returns {Promise<object>} ArticleDetail（含 Markdown 原文 content；prev / next 阶段 8 前恒为 null）
+ * @returns {Promise<object>} ArticleDetail（含 Markdown 原文 content 与 viewCount；
+ *   prev / next 自阶段 8 起为真实相邻文章（只含已发布），首 / 尾篇对应项为 null）
  */
 export async function fetchArticleDetail(id) {
   const value = Number(id)
@@ -50,4 +51,18 @@ export async function fetchArticleDetail(id) {
     throw new ApiError(`文章 ID 不合法：${id}`)
   }
   return request(`/articles/${value}`)
+}
+
+/**
+ * 阅读数 +1：POST /api/articles/{id}/views（阶段 8 批 5 新增接口，决策 BU）
+ * 每次调用都 +1、不按访客去重（演示级语义）；GET 详情本身无副作用。
+ * @param {number|string} id 文章 ID
+ * @returns {Promise<{viewCount: number}>} 自增后的当前阅读数
+ */
+export async function postArticleView(id) {
+  const value = Number(id)
+  if (!Number.isInteger(value) || value < 1) {
+    throw new ApiError(`文章 ID 不合法：${id}`)
+  }
+  return request(`/articles/${value}/views`, { method: 'POST' })
 }

@@ -1,22 +1,79 @@
 <script setup>
-// 单条评论（阶段 5 批 3，模块五）：昵称 / 时间 / 内容。
-// 只有"本机发过的评论"才显示删除入口（决策 8：契约不回传 visitorId，归属靠本地账本显示、靠后端校验）。
-// 删除用行内二次确认，不用 window.confirm —— 阻塞式弹窗样式不受主题控制，也与页面观感割裂。
-import { ref } from 'vue'
-import { deleteComment } from '@/api/comments'
+// 单条评论（阶段 5 批 3，模块五；阶段 8 批 6 补"编辑"入口）：
+// 昵称 / 时间 / 内容；只有"本机发过的评论"才显示编辑与删除入口
+// （决策 8 / BS：契约不回传 visitorId，归属靠本地账本显示、靠后端校验）。
+// 删除用行内二次确认、编辑用行内表单，都不用 window.confirm —— 阻塞式弹窗样式不受主题控制。
+import { nextTick, ref } from 'vue'
+import { deleteComment, updateComment } from '@/api/comments'
 import { formatDateTime } from '@/utils/date'
 import { getVisitorId } from '@/utils/visitor'
+import { COMMENT_LIMITS } from '@/utils/validate'
 
 const props = defineProps({
   comment: { type: Object, required: true },
-  canDelete: { type: Boolean, default: false }
+  canDelete: { type: Boolean, default: false },
+  canEdit: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['deleted'])
+const emit = defineEmits(['deleted', 'updated'])
 
 const confirming = ref(false)
 const deleting = ref(false)
 const error = ref(null)
+
+// 行内编辑（阶段 8 批 6）：editing 为真时用 textarea 替换正文段落
+const editing = ref(false)
+const saving = ref(false)
+const editContent = ref('')
+const editInput = ref(null)
+const editError = ref(null)
+
+async function startEdit() {
+  if (editing.value) return
+  editContent.value = props.comment.content
+  editError.value = null
+  error.value = null
+  confirming.value = false
+  editing.value = true
+  await nextTick()
+  editInput.value?.focus()
+}
+
+function cancelEdit() {
+  if (saving.value) return
+  editing.value = false
+  editError.value = null
+}
+
+async function saveEdit() {
+  if (saving.value) return
+  const content = editContent.value.trim()
+  if (content === '') {
+    editError.value = '评论内容不能为空'
+    return
+  }
+  if (content.length > COMMENT_LIMITS.contentMax) {
+    editError.value = `评论内容不能超过 ${COMMENT_LIMITS.contentMax} 个字`
+    return
+  }
+  saving.value = true
+  editError.value = null
+  try {
+    const updated = await updateComment(props.comment.id, content, getVisitorId())
+    editing.value = false
+    emit('updated', updated)
+  } catch (caught) {
+    if (caught && caught.isNotFound) {
+      // 评论已不存在，或本机 visitorId 不匹配：回退只读并提示
+      editing.value = false
+      error.value = caught
+    } else {
+      editError.value = caught.message
+    }
+  } finally {
+    saving.value = false
+  }
+}
 
 async function remove() {
   if (deleting.value) return
@@ -46,11 +103,32 @@ async function remove() {
       <time class="comment__time" :datetime="comment.createdAt">{{ formatDateTime(comment.createdAt) }}</time>
     </div>
 
-    <p class="comment__content">{{ comment.content }}</p>
+    <p v-if="!editing" class="comment__content">{{ comment.content }}</p>
 
-    <div v-if="canDelete" class="comment__actions">
+    <form v-else class="comment__edit" @submit.prevent="saveEdit">
+      <label class="visually-hidden" :for="`comment-edit-${comment.id}`">修改评论内容</label>
+      <textarea
+        :id="`comment-edit-${comment.id}`"
+        ref="editInput"
+        v-model="editContent"
+        class="input comment__edit-input"
+        rows="3"
+        :maxlength="COMMENT_LIMITS.contentMax"
+        :disabled="saving"
+      ></textarea>
+      <p v-if="editError" class="comment__error" role="alert">{{ editError }}</p>
+      <div class="comment__edit-actions">
+        <button type="submit" class="btn" :disabled="saving">
+          {{ saving ? '保存中…' : '保存修改' }}
+        </button>
+        <button type="button" class="comment__action" :disabled="saving" @click="cancelEdit">取消</button>
+      </div>
+    </form>
+
+    <div v-if="(canDelete || canEdit) && !editing" class="comment__actions">
       <template v-if="!confirming">
-        <button type="button" class="comment__action" @click="confirming = true">删除</button>
+        <button v-if="canEdit" type="button" class="comment__action" @click="startEdit">编辑</button>
+        <button v-if="canDelete" type="button" class="comment__action" @click="confirming = true">删除</button>
       </template>
       <template v-else>
         <span class="comment__confirm">确定删除这条评论？</span>
@@ -61,7 +139,7 @@ async function remove() {
       </template>
     </div>
 
-    <p v-if="error" class="comment__error" role="alert">删除失败：{{ error.message }}</p>
+    <p v-if="error && !editing" class="comment__error" role="alert">操作失败：{{ error.message }}</p>
   </li>
 </template>
 
@@ -152,5 +230,24 @@ async function remove() {
 
 [data-theme='dark'] .comment__error {
   color: #ff7b72;
+}
+
+/* 行内编辑（阶段 8 批 6） */
+.comment__edit {
+  margin: 0;
+}
+
+.comment__edit-input {
+  width: 100%;
+  min-height: 76px;
+  resize: vertical;
+}
+
+.comment__edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
 }
 </style>

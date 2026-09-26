@@ -1,6 +1,6 @@
 <script setup>
-// 评论区（阶段 5 批 3，模块五）：列表（按契约倒序）+ 加载更多 + 发表表单 + 删除。
-// 数据全部来自后端（契约 4.8 / 4.9 / 4.12 节）；本地只记"我发过的评论 ID"用于决定是否显示删除入口。
+// 评论区（阶段 5 批 3，模块五；阶段 8 批 6 补行内编辑）：列表（按契约倒序）+ 加载更多 + 发表表单 + 编辑 / 删除。
+// 数据全部来自后端（契约 4.8–4.12 节）；本地只记"我发过的评论 ID"用于决定是否显示编辑 / 删除入口。
 // 总数通过 total-change 回传给详情页头部 meta 的「评论 N」，避免两处各算一份。
 // 阶段 7 批 5（决策 BM）：删除成功后顺手清掉表单里的「评论已发表」提示（闭环遗留 29）。
 import { computed, onMounted, ref, watch } from 'vue'
@@ -93,6 +93,13 @@ function onDeleted(commentId) {
   publishTotal()
 }
 
+// 行内编辑成功（阶段 8 批 6）：用接口返回值就地替换该条内容，不重新拉整个列表
+function onUpdated(comment) {
+  comments.value = comments.value.map((item) =>
+    item.id === comment.id ? { ...item, content: comment.content } : item
+  )
+}
+
 onMounted(load)
 // 同一路由参数变化时（理论上详情页会因 :key 重建组件）仍留一道保险
 watch(() => props.articleId, load)
@@ -123,7 +130,13 @@ watch(() => props.articleId, load)
     <template v-else>
       <ul class="comments__list">
         <li v-for="comment in comments" :key="comment.id">
-          <CommentItem :comment="comment" :can-delete="myComments.isMine(comment.id)" @deleted="onDeleted" />
+          <CommentItem
+            :comment="comment"
+            :can-delete="myComments.isMine(comment.id)"
+            :can-edit="myComments.isMine(comment.id)"
+            @deleted="onDeleted"
+            @updated="onUpdated"
+          />
         </li>
       </ul>
 
