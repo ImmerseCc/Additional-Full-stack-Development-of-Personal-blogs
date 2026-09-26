@@ -49,7 +49,7 @@ cd "/d/code/Additional Full-stack Development of Personal blogs/frontend" && npm
 |---|---|---|---|---|
 | 1 | **启动** | `cd backend && ./mvnw spring-boot:run`；另开窗口执行 `curl -s http://localhost:8080/api/health` | 控制台出现 `Tomcat started on port 8080` 与 `Started BlogApplication in X seconds`；接口返回 `{"code":0,"message":"ok","data":{"status":"UP",...}}`；浏览器打开 Swagger UI 可见 **5 个分组 / 20 个操作** | `stage9-09-swagger.png` |
 | 2 | **创建文章** | `curl -s -X POST http://localhost:8080/api/articles -H "Content-Type: application/json" -d '{"title":"演示：新建一篇文章","content":"## 小标题\n\n这是演示用的正文。","status":"PUBLISHED","tags":["演示"]}'` | HTTP **201**，`data` 为新的 `ArticleSummary`（含 `id` / `summary` 自动取正文前 120 字 / `tags` 自动创建）；刷新前端列表可见新文章 | — |
-| 3 | **列表查询** | `curl -s "http://localhost:8080/api/articles?size=5&page=1"`；再试 `?keyword=SQLite`、`?tags=Vue,前端&tagMode=or`、`?status=DRAFT` | 返回分页对象 `{items,page,size,total,totalPages}`；默认只含 `PUBLISHED`、按 `createdAt` 倒序；`keyword` / 多标签 / 状态过滤均生效 | — |
+| 3 | **列表查询** | `curl -s "http://localhost:8080/api/articles?size=5&page=1"`；再试 `?keyword=SQLite`、`?tags=Vue,前端&tagMode=or`、`?status=DRAFT`（**Swagger 里请分框填写，见附录 A.3 的注意事项**） | 返回分页对象 `{items,page,size,total,totalPages}`；默认只含 `PUBLISHED`、按 `createdAt` 倒序；`keyword` / 多标签 / 状态过滤均生效 | — |
 | 4 | **修改文章** | `curl -s -X PUT http://localhost:8080/api/articles/<id> -H "Content-Type: application/json" -d '{"title":"演示：标题已修改","content":"正文……","status":"DRAFT"}'` | HTTP 200，`data` 为更新后的 `ArticleSummary`；转 `DRAFT` 后该文章从默认列表消失（`?status=DRAFT` 仍可查到） | — |
 | 5 | **删除文章** | `curl -s -X DELETE http://localhost:8080/api/articles/<id>` → 再 `curl -s http://localhost:8080/api/articles/<id>` | 删除返回 `data: null`；再查详情 → HTTP 404 / `code 40004`。**注意**：删除文章后**标签会保留**（既定行为） | — |
 | 6 | **重启后数据保留** | 在后端窗口按 `Ctrl + C` 停服 → 重新 `./mvnw spring-boot:run` → 重新查询第 2 步创建的文章（或任意文章） | 数据仍在（单文件 SQLite：`backend/data/blog.db`，运行时伴随 `blog.db-wal` / `blog.db-shm`）；启动日志会再次打印 `Started BlogApplication` | — |
@@ -196,17 +196,23 @@ Swagger UI → **文章**分组 → `POST /api/articles` → **Try it out** → 
 
 ### A.3 第 3 步 · 列表查询（GET /api/articles）
 
-`GET /api/articles` → Try it out，依次改参数（每次 Execute 都能看到 `{items,page,size,total,totalPages}`）：
+`GET /api/articles` → **Try it out**。
 
-| 参数 | 期望 |
-|---|---|
-| （不带参数） | 默认 `page=1&size=10&status=PUBLISHED`，只含**已发布**、按 `createdAt` 倒序 |
-| `size=5&page=2` | 第二页 5 条（共 12 篇） |
-| `keyword=SQLite` | **3 篇**（只按**标题**模糊匹配） |
-| `tags=Vue,前端&tagMode=and` | **2 篇**（同时包含） |
-| `tags=Vue,前端&tagMode=or` | **5 篇**（任一即可） |
-| `status=DRAFT` | 当前草稿（种子状态为 0 篇；第 4 步之后会变成 1 篇） |
-| `size=999`（反例） | **400 / `code 40002`**（`size` 上限 20） |
+> ⚠️ **Swagger 里每个查询参数是一个独立的输入框**，请按"参数名 → 填什么"**分框**填写。
+> **不要**把 `tags=Vue,前端&tagMode=and` 这样的整串粘进某一个框 —— 那会被当成"一个标签名"，结果是 **0 篇**（已实测复现：`?tags=tags%3DVue%2C前端%26tagMode%3Dand` → `total: 0`）。
+
+| 参数名 | 填什么 | 期望结果 |
+|---|---|---|
+| （都不填） | — | 默认 `page=1 & size=10 & status=PUBLISHED`，只含已发布、按创建时间倒序 |
+| `page` / `size` | `2` / `5` | 第二页 5 条（共 12 篇） |
+| `keyword` | `SQLite` | **3 篇**（只按**标题**模糊匹配） |
+| `tags` + `tagMode` | `Vue,前端` + `and` | **2 篇**（同时包含两个标签） |
+| `tags` + `tagMode` | `Vue,前端` + `or` | **5 篇**（任一即可） |
+| `status` | `DRAFT` | 当前草稿（种子状态 0 篇；第 4 步后会变成 1 篇） |
+| `size` | `999`（反例） | **400 / `code 40002`**（`size` 上限 20） |
+
+> 同样的筛选也可以**直接贴进浏览器地址栏**（前端会读 `?tags=…&tagMode=…` 并显示"筛选出 N 篇文章"）：
+> `http://localhost:5173/articles?tags=Vue,前端&tagMode=and` → **筛选出 2 篇文章**（已实测）。
 
 ### A.4 第 4 步 · 修改文章（PUT /api/articles/{id}，全量语义）
 
