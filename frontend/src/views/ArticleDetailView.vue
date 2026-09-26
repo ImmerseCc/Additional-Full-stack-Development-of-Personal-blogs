@@ -15,6 +15,8 @@ import { computed, defineAsyncComponent, nextTick, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import CommentSection from '@/components/CommentSection.vue'
 import LikeButton from '@/components/LikeButton.vue'
+import MarkdownBodySkeleton from '@/components/MarkdownBodySkeleton.vue'
+import MarkdownLoadError from '@/components/MarkdownLoadError.vue'
 import ReadingProgress from '@/components/ReadingProgress.vue'
 import SkeletonBlock from '@/components/SkeletonBlock.vue'
 import TableOfContents from '@/components/TableOfContents.vue'
@@ -25,8 +27,16 @@ import { useScrollSpy } from '@/utils/scrollSpy'
 // 决策 BH（阶段 7 批 2）：Markdown 管线（markdown-it + highlight.js + DOMPurify，约 280 kB）
 // 由静态 import 改为动态加载 —— 详情页壳层（标题 / meta / 封面 / 骨架）不再等它下载完，
 // 文章 404 与错误态更是完全不加载；取目录前用它确保正文已经渲染（见 load()）。
+// 阶段 9 批 2（闭环遗留 32）：补 loadingComponent / errorComponent 两态。
+// 演练实测：原先只靠 <Suspense> 兜加载态时，**加载期异常会被 Suspense 吞掉** ——
+// 正文区静默空白、errorComponent 不渲染、只剩一条全局错误 Toast；改用异步组件自带的
+// loading（骨架）/ error（MarkdownLoadError +「重新加载正文」）后，三种状态都有明确界面。
 const loadMarkdownRenderer = () => import('@/components/MarkdownRenderer.vue')
-const MarkdownRenderer = defineAsyncComponent(loadMarkdownRenderer)
+const MarkdownRenderer = defineAsyncComponent({
+  loader: loadMarkdownRenderer,
+  loadingComponent: MarkdownBodySkeleton,
+  errorComponent: MarkdownLoadError
+})
 
 const route = useRoute()
 
@@ -102,8 +112,14 @@ async function load() {
   // 必须先让 loading 置否、正文真正渲染出来，再去取目录；
   // 否则此时模板还停在加载态的骨架分支，bodyRoot 是 null，目录永远为空（批 4 实测踩到）
   await nextTick()
-  // 正文现在是异步组件（决策 BH）：还要等管线 chunk 到位并完成渲染，否则读到的是骨架
-  await loadMarkdownRenderer()
+  // 正文现在是异步组件（决策 BH）：还要等管线 chunk 到位并完成渲染，否则读到的是骨架。
+  // 加载失败 → 正文区由异步组件的 errorComponent（MarkdownLoadError）兜底；
+  // 这里只是不去取目录，也不让整个 load() 抛错（否则会多一条全局错误 Toast）。
+  try {
+    await loadMarkdownRenderer()
+  } catch (caught) {
+    return
+  }
   await nextTick()
   collectHeadings()
   measure()
@@ -193,18 +209,7 @@ onMounted(load)
           </details>
 
           <div ref="bodyRoot" v-reveal="{ delay: 120 }" class="detail__body">
-            <Suspense>
-              <MarkdownRenderer :source="article.content" />
-              <template #fallback>
-                <div class="detail-loading" aria-busy="true" aria-label="正文加载中">
-                  <SkeletonBlock height="14px" width="92%" />
-                  <SkeletonBlock height="14px" width="86%" />
-                  <SkeletonBlock height="14px" width="90%" />
-                  <SkeletonBlock height="14px" width="58%" />
-                  <SkeletonBlock height="150px" radius="var(--radius-card)" />
-                </div>
-              </template>
-            </Suspense>
+            <MarkdownRenderer :source="article.content" />
           </div>
 
           <ReadingProgress />

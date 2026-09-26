@@ -1,7 +1,9 @@
 // 目录滚动高亮（阶段 4 批 4，决策 Z）：用 scroll + getBoundingClientRect 判断"当前读到哪一节"。
 // 这里刻意不用 IntersectionObserver——需要的是"最后一个越过页头线的小节"，
 // 直接比较各标题的位置最直观，也便于在滚到底部时兜底高亮最后一节。
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+// 阶段 9 批 2（审计 9-1）：事件登记 + rAF 合并 + 卸载清理改由 utils/scrollFrame.js 统一承担。
+import { ref } from 'vue'
+import { useScrollFrame } from '@/utils/scrollFrame'
 
 /**
  * @param {() => Array<{id: string}>} getHeadings 返回当前目录项（组件里传 `() => headings.value`）
@@ -10,10 +12,8 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 export function useScrollSpy(getHeadings, options = {}) {
   const offset = options.offset ?? 96
   const activeId = ref('')
-  let frame = 0
 
   function measure() {
-    frame = 0
     const headings = getHeadings()
     if (!headings.length) {
       activeId.value = ''
@@ -35,23 +35,7 @@ export function useScrollSpy(getHeadings, options = {}) {
     activeId.value = scrolledToBottom ? headings[headings.length - 1].id : current
   }
 
-  // 滚动事件里只登记一帧，真正的计算放在 requestAnimationFrame 中
-  function schedule() {
-    if (frame) return
-    frame = window.requestAnimationFrame(measure)
-  }
+  const { measure: measureNow } = useScrollFrame(measure)
 
-  onMounted(() => {
-    measure()
-    window.addEventListener('scroll', schedule, { passive: true })
-    window.addEventListener('resize', schedule)
-  })
-
-  onBeforeUnmount(() => {
-    if (frame) window.cancelAnimationFrame(frame)
-    window.removeEventListener('scroll', schedule)
-    window.removeEventListener('resize', schedule)
-  })
-
-  return { activeId, measure }
+  return { activeId, measure: measureNow }
 }

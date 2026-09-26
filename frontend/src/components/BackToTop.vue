@@ -2,39 +2,24 @@
 // 回到顶部（阶段 7 批 1，决策 BI）：全站挂载，滚动超过约一屏半后出现在右下角。
 // 滚动监听同样走"事件登记一帧 + rAF 计算"的范式；系统开启"减少动态效果"时改为瞬时跳转。
 // Teleport 到 body，让固定定位不受父级层叠上下文影响（同 ToastStack）。
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { ref } from 'vue'
+import { useScrollFrame } from '@/utils/scrollFrame'
 
 const APPEAR_RATIO = 1.5
 
 const visible = ref(false)
-let frame = 0
 
 function measure() {
-  frame = 0
   visible.value = window.scrollY > window.innerHeight * APPEAR_RATIO
 }
 
-function schedule() {
-  if (frame) return
-  frame = window.requestAnimationFrame(measure)
-}
+// 滚动登记 + rAF 合并 + 卸载清理统一由 utils/scrollFrame.js 承担（阶段 9 批 2，审计 9-1）
+useScrollFrame(measure)
 
 function toTop() {
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' })
 }
-
-onMounted(() => {
-  window.addEventListener('scroll', schedule, { passive: true })
-  window.addEventListener('resize', schedule)
-  measure()
-})
-
-onBeforeUnmount(() => {
-  if (frame) window.cancelAnimationFrame(frame)
-  window.removeEventListener('scroll', schedule)
-  window.removeEventListener('resize', schedule)
-})
 </script>
 
 <template>

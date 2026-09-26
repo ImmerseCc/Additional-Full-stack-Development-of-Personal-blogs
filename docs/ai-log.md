@@ -974,3 +974,24 @@
 - 验证命令与结果（均为实测输出）：前端 38 模块 / 后端 41 类的引用计数脚本；密钥关键词扫描 0 命中；`.gitkeep` 定位 3 处；依赖—使用点对账；`isValidationError` 零引用复核（唯一命中为定义行）。
 - 遗留问题：见 `docs/current-state.md` 第五节（33 条不变）；本批**新增待批 2 处理项 7 条**：9-1、9-2、10-1、10-2、6-1、6-2、6-3。
 - 下一步：**批 2 —— 审计问题修复**：修 9-1 / 9-2（重复实现）、10-1 / 10-2（死代码残留）、6-1 / 6-2 / 6-3（校验口径，至少统一邮箱口径），外加作者追加确认的**评论错误提示动画**与 **Toast `warning` 类型**、遗留 32 的 `errorComponent` + 失败态演练；每项附复验证据，做完停下等作者确认。
+
+### 阶段 9：报错记录整理 + 前后端专项审计 + 交付文档与演示脚本（批 2：审计问题修复）
+- 我的提示词摘要："**批 1 通过，请继续**"（作者确认批 1 并授权批 2 —— 按 A 静态层清单修复，另含作者追加确认的评论错误提示动画 / Toast `warning` 类型 / 遗留 32）。
+- AI 做了什么（**9 项修复**，逐项列证据）：
+  1. **9-1 重复实现 → 抽公共件**：新增 `frontend/src/utils/scrollFrame.js`（`useScrollFrame`：事件登记 → rAF 合并 → 挂载即测一次 → 卸载自动取消并解绑）；`utils/scrollSpy.js`、`components/BackToTop.vue`、`components/ReadingProgress.vue` 三处改为共用，各自删除 `frame` / `schedule` / `onMounted` / `onBeforeUnmount` 样板；
+  2. **9-2 重复实现 → 收敛到 common**：新增 `backend/src/main/java/com/example/blog/common/Texts.java`（`blankToNull` 唯一定义），`ArticleService` / `CommentService` 改用 `Texts.blankToNull(...)` 并删除各自的私有方法；`./mvnw -B -ntp compile` → **BUILD SUCCESS（42 个源文件）**；
+  3. **10-1 死代码**：`git rm backend/src/main/java/com/example/blog/config/.gitkeep`（该包已有 2 个真实类）；
+  4. **10-2 死代码**：删除 `frontend/src/api/error.js` 中零引用的 `isValidationError` getter（保留有 3 处使用的 `isNotFound`）；
+  5. **6-1 / 6-2 校验口径**：后端 `CommentCreateRequest` 用与前端**同一条正则** `EMAIL_PATTERN = "^$|^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"` 替换 `@Email`（空串仍按未填），保留 `@Size(max = 100)`；前端 `utils/validate.js` 补 `authorEmailMax: 100` 与同文案；**应用内无可观测变化**（前端本来就拦 `a@b`），仅收紧直连接口；
+  6. **6-3 校验口径**：`views/StudioView.vue` 的 `saveForm()` 补 `LIMITS = { title: 100, summary: 200, coverUrl: 200, content: 50000 }`，与后端 DTO 同值（后端仍兜底）；
+  7. **追加项 A（评论错误提示动画）**：`components/CommentForm.vue` 的 `.comment-form__error` 加 `comment-error-in` 淡入 + 轻微下移动画（`var(--duration-fast)` + `--ease-out`，reduced-motion 下由 `base.css` 全局规则归零）；
+  8. **追加项 B（Toast warning）**：`stores/toast.js` 类型联合补 `'warning'`；`components/ToastStack.vue` 加 `.toast--warning`（`#bf8700` 左边框）；`views/StudioView.vue` 的「转为草稿」改用 warning 并改文案为"已转为草稿，前台列表不再展示"（有真实使用点，不留悬空类型）；
+  9. **遗留 32（异步管线失败态）**：新增 `components/MarkdownBodySkeleton.vue`（正文骨架）与 `components/MarkdownLoadError.vue`（失败块 + 刷新按钮）；`ArticleDetailView` 改为 `defineAsyncComponent({ loader, loadingComponent, errorComponent })`，**去掉 `<Suspense>`**；`load()` 内的加载失败改为"放弃取目录、直接返回"。
+- **演练过程（含 1 次方法纠错，已记入 `docs/debug-log.md` 报错记录 10）**：
+  - 第一次用"`<script setup>` 顶部 `throw`"模拟失败 —— **方法错误**（SFC 的 script setup 编译进组件 `setup()`，属渲染期错误，不走加载失败分支），观察到的是"全局错误 Toast + 正文区空白"；
+  - 第二次用**真实的 chunk 缺失**（临时把 `MarkdownRenderer.vue` 改名）→ 发现**根因**：父级 `<Suspense>` 会吞掉加载期异常，`errorComponent` 在该路径下不生效；并核实 Vue 3.5.43 的 `errorComponent` **只接收 `error`**（`retry / fail / attempts` 已移除），故错误块给「刷新页面」动作；
+  - 三态复验（真实浏览器）：**失败态** → 正文区显示错误块、文章其余部分正常（截图 `docs/demo/stage9-01-markdown-load-error.png`）；**动作** → 点「刷新页面」页面确实重载；**恢复态** → 文件改回后正文 4 小节正常渲染、无错误块无全局 Toast。
+- 改动文件（**全部为完整文件**，无占位）：新增 `frontend/src/utils/scrollFrame.js`、`frontend/src/components/MarkdownBodySkeleton.vue`、`frontend/src/components/MarkdownLoadError.vue`、`backend/src/main/java/com/example/blog/common/Texts.java`；修改 `frontend/src/{utils/scrollSpy.js,utils/validate.js,api/error.js,stores/toast.js,components/BackToTop.vue,components/ReadingProgress.vue,components/ToastStack.vue,components/CommentForm.vue,views/ArticleDetailView.vue,views/StudioView.vue}`、`frontend/scripts/smoke.mjs`、`backend/src/main/java/com/example/blog/{model/CommentCreateRequest.java,service/ArticleService.java,service/CommentService.java}`；删除 `backend/src/main/java/com/example/blog/config/.gitkeep`；新增截图 `docs/demo/stage9-01-markdown-load-error.png`；文档 `docs/{audit-report,debug-log,current-state,collaboration-log,ai-log}.md`、`README.md`。**未新增任何依赖、未改契约语义**。
+- 验证命令与结果（均为实测输出）：`./mvnw -B -ntp compile` → BUILD SUCCESS；`npm run build` → **371ms**（共享 chunk `70.44 → 65.48 kB`，gzip `27.31 → 25.68 kB`）；`npm run smoke` → **全部通过：145/145 项断言**（新增 2 条邮箱口径断言）；后端按新代码重启后 `GET /api/health` → 200；浏览器三态复验见上。
+- 遗留问题：**闭环遗留 32**；`current-state.md` §五 的 18（骨架屏出现时机抓拍）仍留（本机请求过快），另在 §五 登记 1 条新观察（Suspense 吞异常的教训已转成报错记录 10）。
+- 下一步：**批 3 —— 正式审计 B · 运行时层**：严格按 README 启动、前端六模块逐项、后端六项最低功能（含"重启后数据仍在"的历史实测引用）、响应式 375 / 768 / 1280、深色对比度、前后端双层校验实测、数据稳定性（含 `SQLITE_BUSY`）；产出审计报告「B 运行时层」章节 + `stage9-*` 截图；做完停下等作者确认。

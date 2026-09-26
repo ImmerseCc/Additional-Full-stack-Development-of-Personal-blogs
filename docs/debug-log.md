@@ -273,10 +273,37 @@
 
 ---
 
+## 报错记录 10：阶段 9 批 2 演练发现 —— `<Suspense>` 会吞掉异步组件的加载期异常（正文区静默空白）
+
+- **性质说明**：与报错记录 8 / 9 同类，属**自查类**（能构建、能跑，但失败路径下界面是坏的），由批 2 的"失败态演练"揪出（遗留 32）。
+- **现象**：把 Markdown 管线的动态 import 打掉（模拟 chunk 缺失，见"定位过程"第 2 步）后刷新详情页 —— **正文区一片空白**：既没有错误提示、也没有骨架，只剩一条全局错误 Toast「页面出现未预期的异常」；`defineAsyncComponent` 上配的 `errorComponent` **完全没有渲染**。
+- **运行 / 复现命令**：`cd backend && ./mvnw -B -ntp spring-boot:run` + `cd frontend && npm run dev`，访问 `http://localhost:5173/articles/2`；演练＝把 `frontend/src/components/MarkdownRenderer.vue` 临时改名为 `.bak` 后在浏览器刷新（验证完改回）。
+- **相关代码或文件**：`frontend/src/views/ArticleDetailView.vue`（`<Suspense>` + `defineAsyncComponent`）、`frontend/src/components/MarkdownLoadError.vue`、`frontend/src/components/MarkdownBodySkeleton.vue`
+- **定位过程**：
+  1. 首次用"在 `<script setup>` 顶部 `throw`"模拟加载失败 —— **方法本身是错的**：SFC 的 `<script setup>` 会整体编译进组件 `setup()`，那是**渲染期**错误，根本不走异步组件的加载失败分支（当时表现为：全局错误 Toast + 正文区空白）；
+  2. 改用真实模拟：临时把 `MarkdownRenderer.vue` 改名（dev server 对缺失模块返回 200 + HTML 兜底 → 模块解析失败）→ 动态 `import()` 被拒绝；
+  3. 此时即使配了 `errorComponent`，正文区**仍然空白** —— 根因在父级：用 `<Suspense>` 兜加载态时，加载期异常走的是 Suspense 的依赖注册分支（本机 `@vue/runtime-core` 中 `suspensible && instance.suspense` 分支的 `.catch(onError)`），**`errorComponent` 只在该分支之外生效**；
+  4. 另核实一处版本差异：本机 **Vue 3.5.43** 的 `errorComponent` **只接收 `error`**（早期版本的 `retry / fail / attempts` 已移除，`grep` 只在内部实现里见到 `retry()`）。
+- **修复方案**（1 个视图 + 2 个新组件）：
+  1. **不再用 `<Suspense>` 兜加载态**，改由异步组件自带两态：
+     `defineAsyncComponent({ loader, loadingComponent: MarkdownBodySkeleton, errorComponent: MarkdownLoadError })`；
+  2. 新增 `frontend/src/components/MarkdownBodySkeleton.vue`（正文骨架，原 Suspense fallback 的片段搬过来）；
+     新增 `frontend/src/components/MarkdownLoadError.vue`（错误块：标题 + 说明 + **刷新页面**按钮；因 3.5 已无 `retry` prop，"原地重新 import"在模块图里也已被标记失败，刷新是最可靠的重试）；
+  3. `load()` 里对 `await loadMarkdownRenderer()` 的失败改为"放弃取目录、直接返回"，不让整个 `load()` 抛错。
+- **修复后验证**（真实浏览器，AI 实测）：
+  1. **失败态**：`MarkdownRenderer.vue` 改名后刷新 → 正文区显示「正文渲染模块加载失败」+ 说明 + 「刷新页面」按钮；文章标题 / meta / 封面 / 点赞 / 上下篇 / 评论区**全部正常显示**；截图归档 `docs/demo/stage9-01-markdown-load-error.png`；
+  2. **动作可用**：点「刷新页面」→ 页面确实重新加载；
+  3. **恢复态**：文件改回原名后刷新 → 正文 4 个小节全部正常渲染，**无错误块、无全局错误 Toast**；
+  4. 构建 `npm run build` → **371ms**；去掉 Suspense 后共享 chunk `70.44 → 65.48 kB`（gzip `27.31 → 25.68`，阶段 7 记录的 +2.4 kB 代价随之消失）；`npm run smoke` → **145/145**。
+- **最终结果**：**已修复并在真实浏览器复验通过**（加载中 / 加载失败 / 正常三态都有明确界面）。两条可复用经验：① **`<Suspense>` 会吞掉异步组件的加载期异常** —— 要"两态可辨"就用 `loadingComponent` + `errorComponent`，不要与 Suspense 混用；② **演练"加载失败"时，`<script setup>` 里的 `throw` 不算数**（那是 setup 期错误），必须让**模块加载本身**失败。
+
+---
+
 ## 待记录的观察项（尚未构成报错）
 
 | 观察 | 说明 | 状态 |
 |---|---|---|
+| Vue 3.5 的 `errorComponent` 只接收 `error` | 早期版本的 `retry / fail / attempts` 三个 prop 已从 `defineAsyncComponent` 移除（本机 vue 3.5.43 实测：`@vue/runtime-core` 里只会 `createVNode(errorComponent, { error })`） | **已处理**：`MarkdownLoadError` 不再依赖 `retry` prop，改为「刷新页面」动作（见报错记录 10） |
 | Git 换行符提示 | `git add` 提示 `warning: LF will be replaced by CRLF ...` | **已处理**：新增 `.gitattributes`（`* text=auto eol=lf`；`.cmd/.bat/.ps1` 用 CRLF；`mvnw`/`*.sh` 用 LF） |
 | 项目路径含空格 | 工作目录为 `D:\code\Additional Full-stack Development of Personal blogs` | 未处理；目前未出现异常 |
 | 终端中文乱码 | AI 侧 Git Bash 输出中文提示时出现乱码（如"关闭后请求"变成了乱码） | 未处理；控制台代码页问题，不是项目问题。**阶段 6 批 0 复现**：用临时 Java 程序只读复核数据库时，中文标签同样打印为乱码（数值正常）→ 只读数值型结果，或给 `java` 追加 `-Dstdout.encoding=UTF-8` |
@@ -302,6 +329,7 @@
 
 ## 当前状态
 
-- 已记录真实报错：**9 条**（1：环境类、非阻塞、无需修复；2：已修复并实测通过；3：使用 / 环境类，已修复并**双方**实测通过；4：工具 / 编码类，已处理；5：使用类——后端未运行，已修复；6：**数据类——种子数据固定 tag ID 与历史残留行冲突，已按标准路径重置数据库修复并复验幂等**；7：**进程 / 环境类——8080 已被另一个实例占用导致后端启动失败，已恢复**；8：**前端自查类——批 4 的进场动画把首屏内容藏在 `opacity:0`、详情页目录永远为空，两个缺陷均已修复并复验**；9：**前端自查类（阶段 5 批 5）——本地数据面板"当前占用的键"读在主题默认值落盘之前，已用 `await nextTick()` + `flush: 'post'` watcher 修复并复验**）
+- 已记录真实报错：**10 条**（1：环境类、非阻塞、无需修复；2：已修复并实测通过；3：使用 / 环境类，已修复并**双方**实测通过；4：工具 / 编码类，已处理；5：使用类——后端未运行，已修复；6：**数据类——种子数据固定 tag ID 与历史残留行冲突，已按标准路径重置数据库修复并复验幂等**；7：**进程 / 环境类——8080 已被另一个实例占用导致后端启动失败，已恢复**；8：**前端自查类——批 4 的进场动画把首屏内容藏在 `opacity:0`、详情页目录永远为空，两个缺陷均已修复并复验**；9：**前端自查类（阶段 5 批 5）——本地数据面板"当前占用的键"读在主题默认值落盘之前，已用 `await nextTick()` + `flush: 'post'` watcher 修复并复验**；10：**前端自查类（阶段 9 批 2）——`<Suspense>` 吞掉异步组件加载期异常导致正文区静默空白，已改为 `loadingComponent` / `errorComponent` 两态并三态复验**）
 - 项目代码层面的报错：**4 条已处理**（报错记录 4 暴露的"查询串解码失败被兜底成 50000"属项目代码改进项，已在 `GlobalExceptionHandler` 修正为 40002；报错记录 8 的 A / B 两个缺陷属该批新代码引入；报错记录 9 属阶段 5 批 5 新代码引入 —— 均已修复并复验）
-- 交付要求"至少 1 次真实报错或调试过程"：**已满足**（第 2、3、4、5、6、7、8、9 条均包含完整闭环：报错原文 / 现象 → 定位 → 修复 → 实测验证）
+- 交付要求"至少 1 次真实报错或调试过程"：**已满足**（第 2、3、4、5、6、7、8、9、10 条均包含完整闭环：报错原文 / 现象 → 定位 → 修复 → 实测验证）
+

@@ -24,7 +24,7 @@ export const useToastStore = defineStore('toast', () => {
   /**
    * 弹出一条提示。
    * @param {string} message 文案（为空则忽略）
-   * @param {{type?: 'info'|'success'|'error', duration?: number}} [options] duration 为 0 表示不自动消失
+   * @param {{type?: 'info'|'success'|'warning'|'error', duration?: number}} [options] duration 为 0 表示不自动消失
    * @returns {number|null} 提示 ID
    */
   function push(message, { type = 'info', duration = TOAST_DEFAULT_DURATION } = {}) {

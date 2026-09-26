@@ -282,6 +282,20 @@ async function submit() {
   margin: 0;
   color: #d1242f;
   font-size: 13px;
+  /* 错误提示动画（阶段 9 批 2，审计追加项）：每次出现淡入 + 轻微下移；
+     时长走令牌，prefers-reduced-motion 下由 base.css 的全局规则自动归零 */
+  animation: comment-error-in var(--duration-fast) var(--ease-out) both;
+}
+
+@keyframes comment-error-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 [data-theme='dark'] .comment-form__error {

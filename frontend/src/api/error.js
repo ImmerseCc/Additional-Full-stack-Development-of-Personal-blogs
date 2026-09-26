@@ -12,11 +12,6 @@ export class ApiError extends Error {
     this.fields = fields
   }
 
-  // 参数校验类（契约错误码 4xxxx 中 40001 带字段原因）：表单可直接把 fields 映射到输入框提示
-  get isValidationError() {
-    return this.code === 40001
-  }
-
   // 资源不存在：列表 / 详情页据此显示"文章不存在"而不是通用错误
   get isNotFound() {
     return this.code === 40004

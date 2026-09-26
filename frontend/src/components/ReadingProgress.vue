@@ -3,40 +3,22 @@
 // 进度 = 页面滚动比例（scrollY / 可滚动高度），滚到页面底部为 100%；页面不可滚动时恒为 0。
 // 这里刻意不以"正文元素"为准：种子文章里有正文高度小于视口的（如第 1 篇），
 // 那种算法会让进度条在几十像素内从 0 跳到 100%，观感更像故障（批 1 实测发现后改为此口径）。
-// 填充由 requestAnimationFrame 逐帧更新（与 utils/scrollSpy.js 同一范式），
-// 因此不使用 CSS 过渡 —— prefers-reduced-motion 下表现完全一致。
+// 填充由 requestAnimationFrame 逐帧更新（滚动登记与 rAF 合并由 utils/scrollFrame.js 统一承担，
+// 阶段 9 批 2 审计 9-1），因此不使用 CSS 过渡 —— prefers-reduced-motion 下表现完全一致。
 // Teleport 到 body：路由过渡与页头的 backdrop-filter 会建立包含块 / 层叠上下文（同 ToastStack 的处理）。
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useScrollFrame } from '@/utils/scrollFrame'
 
 const ratio = ref(0)
 const percent = computed(() => Math.round(ratio.value * 100))
 
-let frame = 0
-
 function measure() {
-  frame = 0
   const scrollable = document.documentElement.scrollHeight - window.innerHeight
   const value = scrollable > 0 ? window.scrollY / scrollable : 0
   ratio.value = Math.min(1, Math.max(0, value))
 }
 
-// 滚动事件里只登记一帧，真正的计算放在 requestAnimationFrame 中
-function schedule() {
-  if (frame) return
-  frame = window.requestAnimationFrame(measure)
-}
-
-onMounted(() => {
-  window.addEventListener('scroll', schedule, { passive: true })
-  window.addEventListener('resize', schedule)
-  measure()
-})
-
-onBeforeUnmount(() => {
-  if (frame) window.cancelAnimationFrame(frame)
-  window.removeEventListener('scroll', schedule)
-  window.removeEventListener('resize', schedule)
-})
+useScrollFrame(measure)
 </script>
 
 <template>

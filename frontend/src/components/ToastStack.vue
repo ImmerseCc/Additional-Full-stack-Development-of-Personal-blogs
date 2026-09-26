@@ -61,6 +61,11 @@ const toast = useToastStore()
   border-left-color: #2da44e;
 }
 
+/* 警告（阶段 9 批 2 新增，审计追加项）：需要注意但不构成失败的提示，如"已转为草稿" */
+.toast--warning {
+  border-left-color: #bf8700;
+}
+
 .toast__message {
   flex: 1;
   overflow-wrap: anywhere;

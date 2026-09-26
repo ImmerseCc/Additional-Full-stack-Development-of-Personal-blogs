@@ -89,10 +89,15 @@ async function saveForm() {
     content: form.value.content
   }
   // 轻量客户端校验（服务端仍会再校验一遍，字段级原因由 40001 返回）
+  // 阶段 9 批 2（审计 6-3）：补齐与后端 DTO 相同的长度上限（ArticleCreateRequest / ArticleUpdateRequest）
+  const LIMITS = { title: 100, summary: 200, coverUrl: 200, content: 50000 }
   const errors = []
   if (payload.title === '') errors.push('标题不能为空')
-  else if (payload.title.length > 100) errors.push('标题不能超过 100 字')
+  else if (payload.title.length > LIMITS.title) errors.push(`标题不能超过 ${LIMITS.title} 字`)
   if (payload.content.trim() === '') errors.push('正文不能为空')
+  else if (payload.content.length > LIMITS.content) errors.push(`正文不能超过 ${LIMITS.content} 字`)
+  if (payload.summary.length > LIMITS.summary) errors.push(`摘要不能超过 ${LIMITS.summary} 字`)
+  if (payload.coverUrl.length > LIMITS.coverUrl) errors.push(`封面地址不能超过 ${LIMITS.coverUrl} 字`)
   if (payload.tags.length > MAX_TAGS) errors.push(`标签最多 ${MAX_TAGS} 个`)
   if (errors.length > 0) {
     formError.value = errors.join('；')
@@ -134,7 +139,12 @@ async function toggleStatus(article) {
       tags: detail.tags || [],
       content: detail.content
     })
-    toast.push(nextStatus === 'PUBLISHED' ? '已发布' : '已转为草稿', { type: 'success' })
+    // 转草稿会让文章从前台列表消失，用 warning 类型提示（阶段 9 批 2：Toast 补齐 warning）
+    if (nextStatus === 'PUBLISHED') {
+      toast.push('已发布', { type: 'success' })
+    } else {
+      toast.push('已转为草稿，前台列表不再展示', { type: 'warning' })
+    }
     await loadArticles()
   } catch (caught) {
     toast.push(`操作失败：${caught.message}`, { type: 'error' })

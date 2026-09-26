@@ -3,6 +3,7 @@ package com.example.blog.service;
 import com.example.blog.common.BizException;
 import com.example.blog.common.ErrorCode;
 import com.example.blog.common.PageParams;
+import com.example.blog.common.Texts;
 import com.example.blog.common.TimeFormats;
 import com.example.blog.model.Comment;
 import com.example.blog.model.CommentCreateRequest;
@@ -50,7 +51,7 @@ public class CommentService {
         Comment comment = new Comment();
         comment.setArticleId(articleId);
         comment.setAuthorName(request.getAuthorName().trim());
-        comment.setAuthorEmail(blankToNull(request.getAuthorEmail()));
+        comment.setAuthorEmail(Texts.blankToNull(request.getAuthorEmail()));
         comment.setContent(request.getContent());
         comment.setVisitorId(request.getVisitorId());
         comment.setCreatedAt(TimeFormats.parse(TimeFormats.now()));
@@ -98,10 +99,5 @@ public class CommentService {
 
     private static String notFoundMessage(long id) {
         return "评论不存在或访客标识不匹配：id=" + id;
-    }
-
-    /** 空白字符串归一为 null（可选字段存 null 而不是空串）。 */
-    private static String blankToNull(String value) {
-        return (value == null || value.isBlank()) ? null : value.trim();
     }
 }

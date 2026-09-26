@@ -237,6 +237,14 @@ async function main() {
         });
         checkError('非法邮箱', badEmail, 400, 40001);
         check('40001 带字段级原因 data.fields.authorEmail', typeof badEmail.json?.data?.fields?.authorEmail === 'string');
+        // 阶段 9 批 2（审计 6-1 / 6-2）：邮箱口径收紧为"域名必须含点、长度 ≤100"，与前端同一正则
+        const noDotEmail = await api('POST', '/articles/1/comments', {
+            body: { authorName: '甲', authorEmail: 'a@b', content: 'x', visitorId: VISITOR },
+        });
+        checkError('邮箱缺少点（a@b）→ 40001', noDotEmail, 400, 40001);
+        checkError('邮箱超长（102 字）→ 40001', await api('POST', '/articles/1/comments', {
+            body: { authorName: '甲', authorEmail: `${'a'.repeat(95)}@ex.com`, content: 'x', visitorId: VISITOR },
+        }), 400, 40001);
         const longContent = await api('POST', '/articles/1/comments', {
             body: { authorName: '甲', content: 'a'.repeat(1001), visitorId: VISITOR },
         });

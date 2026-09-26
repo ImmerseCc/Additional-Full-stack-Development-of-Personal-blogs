@@ -3,6 +3,7 @@ package com.example.blog.service;
 import com.example.blog.common.BizException;
 import com.example.blog.common.ErrorCode;
 import com.example.blog.common.PageParams;
+import com.example.blog.common.Texts;
 import com.example.blog.common.TimeFormats;
 import com.example.blog.model.AdjacentPairVO;
 import com.example.blog.model.AdjacentVO;
@@ -129,7 +130,7 @@ public class ArticleService {
         Article article = new Article();
         article.setTitle(request.getTitle().trim());
         article.setContent(request.getContent());
-        article.setCoverUrl(blankToNull(request.getCoverUrl()));
+        article.setCoverUrl(Texts.blankToNull(request.getCoverUrl()));
         article.setStatus(resolveStatus(request.getStatus()));
         article.setSummary(resolveSummary(request.getSummary(), request.getContent()));
         article.setCreatedAt(TimeFormats.parse(now));
@@ -146,7 +147,7 @@ public class ArticleService {
         Article article = new Article();
         article.setTitle(request.getTitle().trim());
         article.setContent(request.getContent());
-        article.setCoverUrl(blankToNull(request.getCoverUrl()));
+        article.setCoverUrl(Texts.blankToNull(request.getCoverUrl()));
         article.setStatus(resolveStatus(request.getStatus()));
         article.setSummary(resolveSummary(request.getSummary(), request.getContent()));
         article.setUpdatedAt(TimeFormats.parse(TimeFormats.now()));
@@ -191,11 +192,6 @@ public class ArticleService {
             return text;
         }
         return text.substring(0, text.offsetByCodePoints(0, SUMMARY_MAX_LENGTH));
-    }
-
-    /** 空白字符串归一为 null（可选字段存 null 而不是空串）。 */
-    private static String blankToNull(String value) {
-        return (value == null || value.isBlank()) ? null : value.trim();
     }
 
     /** 逗号分隔的标签名：去首尾空白、丢空项、去重，并保持用户输入顺序。 */
