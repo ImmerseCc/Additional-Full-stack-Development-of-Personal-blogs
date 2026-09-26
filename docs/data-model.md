@@ -1,7 +1,7 @@
-# 数据模型（v1.0 · 已确认）
+# 数据模型（v1.0 · 已确认；阶段 8 批 1 附注）
 
-> **状态：已确认（作者回复"模型全同意"）。** 可直接写进 `backend/src/main/resources/schema.sql`。
-> 最后更新：阶段 1 批 2 起草 → 本轮确认为 v1.0。
+> **状态：表结构未变（v1.0 的五张表继续沿用）。** 阶段 8 只做两处**非结构**改动（按决策 BS / BW / BU）：① `comment` **不新增 `updated_at` 列**；② `journal_mode` 切为 **WAL**（连接级设置，不落建表语句）；③ `view_count` **开始计数**（经 `POST /api/articles/{id}/views` 自增，不加列、不加索引）。
+> 最后更新：阶段 1 批 2 起草 → v1.0 确认；**阶段 8 批 1 附注**（WAL / `view_count` 启用 / 评论不改结构），待作者随契约 v1.1 一并复核。
 > 决策依据：作者确认 **D1 —— 在 article / comment / like_record / tag 四张表之外，增加第 5 张关联表 `article_tag`**，用于支持"按标签多选过滤"。
 
 ## 确认记录
@@ -9,10 +9,19 @@
 | # | 待确认项 | 作者结论 |
 |---|---|---|
 | 1 | 不做软删除（直接真删） | 同意 |
-| 2 | 保留 `view_count` 字段，阶段 2 不实现计数 | 同意 |
+| 2 | 保留 `view_count` 字段，阶段 2 不实现计数 | 同意（**阶段 8 起开始计数**，见下表附注） |
 | 3 | 无 admin / 作者表（不做登录） | 同意 |
 | 4 | 评论无审核状态字段 | 同意 |
-| 5 | 点赞 / 评论计数先用实时 `COUNT`（方案 A） | 同意 |
+| 5 | 点赞 / 评论计数先用实时 `COUNT`（方案 A） | 同意（不变） |
+
+**阶段 8 附注（决策 BS / BW / BU，作者"均同意，请继续"，2026-09-26）**
+
+| # | 事项 | 结论 |
+|---|---|---|
+| 1 | 评论表是否加 `updated_at` | **不加**（决策 BS）—— `schema.sql` 为 `CREATE TABLE IF NOT EXISTS`，加列需迁移或重置数据库；评论"修改"就地生效，接口不回 `updatedAt` |
+| 2 | `journal_mode` | **切 WAL**（决策 BW）：由 JDBC URL 追加 `journal_mode=WAL` 落地，**不写进 `schema.sql`**；运行期数据库目录会出现 `blog.db-wal` / `blog.db-shm`，重置口径与 `blog.db` 一致（一并删除） |
+| 3 | `view_count` | **开始计数**（决策 BU）：`POST /api/articles/{id}/views` 自增 1，不做去重；无新列、无新索引 |
+| 4 | `like_count` / `comment_count` 冗余列（方案 B） | 仍**不采用**，继续实时 `COUNT` |
 
 > 文末「六、待作者确认的点」保留作为决策留档，内容与上表一致。
 
@@ -52,7 +61,7 @@ article  1 ──< like_record
 | `content` | TEXT | NOT NULL | 正文 Markdown 原文，1–50000 字 |
 | `cover_url` | TEXT | NULL | 封面图地址（首批种子数据用本地 SVG 路径，不依赖外链图床） |
 | `status` | TEXT | NOT NULL DEFAULT 'PUBLISHED'，CHECK(`status IN ('DRAFT','PUBLISHED')`) | 文章状态（后端加分项） |
-| `view_count` | INTEGER | NOT NULL DEFAULT 0 | 阅读数（阶段 8 可选统计，先留字段） |
+| `view_count` | INTEGER | NOT NULL DEFAULT 0 | 阅读数（**阶段 8 起计数**：`POST /api/articles/{id}/views` 自增 1，不做去重） |
 | `created_at` | TEXT | NOT NULL | 创建时间（ISO-8601） |
 | `updated_at` | TEXT | NOT NULL | 更新时间（ISO-8601） |
 
@@ -115,16 +124,18 @@ article  1 ──< like_record
 
 ---
 
-## 三、统计字段策略（`likeCount` / `commentCount`）
+## 三、统计字段策略（`likeCount` / `commentCount` / `viewCount`）
 
 两种做法：
 
 | 方案 | 实现 | 优点 | 缺点 |
 |---|---|---|---|
-| A（**建议先采用**） | 查询时用子查询实时 `COUNT` | 无一致性问题、代码少 | 列表页每条都算一次，数据量大时慢 |
-| B（阶段 8 再评估） | `article` 加冗余列 `like_count` / `comment_count`，服务层维护 | 读取快 | 需要保证不漂移（并发/异常时易出错） |
+| A（**继续采用**） | 查询时用子查询实时 `COUNT` | 无一致性问题、代码少 | 列表页每条都算一次，数据量大时慢 |
+| B（**阶段 8 评估后仍不采用**） | `article` 加冗余列 `like_count` / `comment_count`，服务层维护 | 读取快 | 需要保证不漂移（并发/异常时易出错） |
 
-结论：**先用方案 A**，在 `docs/current-state.md` 中登记为待评估项。
+结论：**`likeCount` / `commentCount` 继续用方案 A**（阶段 8 批 1 复核，仍不采用方案 B）。
+
+`viewCount` 是 `article` 自带的列：**阶段 8 起**由 `POST /api/articles/{id}/views` 自增（`UPDATE article SET view_count = view_count + 1`），读路径直接返回该列；不按访客去重、不做额外并发优化（演示级；SQLite 单写者模型 + `busy_timeout=5000` 已足够）。
 
 ---
 
@@ -148,8 +159,9 @@ VALUES (1, '项目开篇：为什么要手写一个博客', '……', '……', 
 ## 五、初始化与重置
 
 1. **初始化**：后端启动时 Spring Boot 自动执行 `schema.sql` → `data.sql`（由 `application.yml` 的 `spring.sql.init.mode=always` 控制）；
-2. **重置**：停止后端 → 删除 `backend/data/blog.db`、`blog.db-wal`、`blog.db-shm` → 重新启动（自动重建并写入种子数据）；
-3. **注意**：重置会丢失通过接口创建的全部数据，属于不可恢复操作。
+2. **journal_mode**：**阶段 8 起为 WAL**（决策 BW）—— 由 JDBC URL 的 `journal_mode=WAL` 参数在连接建立时设置，**不写进 `schema.sql`**；该模式持久化在数据库文件中，重置后由连接参数再次生效。运行期数据库目录会出现 `blog.db-wal` / `blog.db-shm` 两个伴随文件，属正常现象；
+3. **重置**：停止后端 → 删除 `backend/data/blog.db`、`blog.db-wal`、`blog.db-shm` → 重新启动（自动重建并写入种子数据）；
+4. **注意**：重置会丢失通过接口创建的全部数据，属于不可恢复操作。
 
 ---
 
