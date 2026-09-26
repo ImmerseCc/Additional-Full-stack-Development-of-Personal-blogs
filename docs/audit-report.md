@@ -1,6 +1,6 @@
 # 项目审计记录
 
-> **当前状态：正式审计未发生（仍安排在阶段 9）。** 阶段 6 批 1 已在文末写入**「阶段 6 预审计」**章节 —— 只做「契约 ↔ 实现」逐条对账与可重复的接口回归；本文件的 **12 项检查清单仍待阶段 9 逐项填结论**。
+> **当前状态：正式审计已开始（阶段 9 进行中）。** 第 1 次审计分两层执行：**A 静态层（阶段 9 批 1，已完成 —— 见文末「第 1 次审计 · A 静态层」）**；**B 运行时层（阶段 9 批 3，待执行）**。下方 12 项检查清单的「结论」列已按层回填，最终三类分流（已修复 / 未处理 / 需要我亲自验证）在批 3 后定稿。
 > 审计必须基于**实际运行结果**与**逐文件阅读**，不用“应该没问题”下结论；不写“无 bug”，只写“检查了什么、没检查什么”。
 
 ---
@@ -33,13 +33,13 @@
 | 3 | 后端 6 项最低功能 | 列表分页、详情、创建、修改、删除、重启后数据仍在 | 待审计 |
 | 4 | 响应式 | 375px / 768px / 1280px 三档宽度下导航、列表、详情不破版 | 待审计 |
 | 5 | 深色模式对比度 | 正文、次要文字、按钮、边框在深色下的对比度是否可读（重点查灰字发虚） | 待审计 |
-| 6 | 输入校验 | 评论与文章表单的前端校验 + 后端 Bean Validation 双层校验是否一致 | 待审计 |
-| 7 | 敏感信息 | 仓库内是否出现密钥/Token/密码；`authorEmail` 是否意外回传前端 | 待审计 |
-| 8 | 数据保存读取稳定性 | 点赞/评论/主题刷新后是否保留；后端重启后数据是否仍在；SQLite 并发写入是否报 `SQLITE_BUSY` | 待审计 |
-| 9 | 重复代码 | 组件/工具函数是否有可合并的重复实现 | 待审计 |
-| 10 | 死代码 | 是否存在未被引用的组件、函数、样式、`.gitkeep` 残留 | 待审计 |
-| 11 | 未使用依赖 | `package.json` 与 `pom.xml` 中声明但未使用的依赖 | 待审计 |
-| 12 | 内存泄漏与危险操作 | `setInterval` / 事件监听 / `IntersectionObserver` 是否正确清理；是否存在危险删除逻辑 | 待审计 |
+| 6 | 输入校验 | 评论与文章表单的前端校验 + 后端 Bean Validation 双层校验是否一致 | **A 静态对账完成**（见文末「A 静态层」§5）：发现 3 处口径差异（低危）；**实测部分待批 3** |
+| 7 | 敏感信息 | 仓库内是否出现密钥/Token/密码；`authorEmail` 是否意外回传前端 | **✅ 通过**（A 静态层 §1）：密钥类关键词 0 命中、无 `.env`/`.pem`/`.key`；`CommentVO` 为 5 字段 record，不含 `authorEmail` / `visitorId` |
+| 8 | 数据保存读取稳定性 | 点赞/评论/主题刷新后是否保留；后端重启后数据是否仍在；SQLite 并发写入是否报 `SQLITE_BUSY` | 待审计（B 运行时层，批 3；重启不丢已有阶段 2 / 4 / 8 历史实测） |
+| 9 | 重复代码 | 组件/工具函数是否有可合并的重复实现 | **发现 2 处可合并重复**（A 静态层 §2）：滚动+rAF 范式 ×3、`blankToNull` ×2，拟批 2 处理 |
+| 10 | 死代码 | 是否存在未被引用的组件、函数、样式、`.gitkeep` 残留 | **发现 2 处残留**（A 静态层 §3）：`config/.gitkeep`、`ApiError#isValidationError`，拟批 2 处理；模块级与类级其余无死代码 |
+| 11 | 未使用依赖 | `package.json` 与 `pom.xml` 中声明但未使用的依赖 | **✅ 通过**（A 静态层 §4）：前端 8 个、后端 5 个依赖全部有实际使用点 |
+| 12 | 内存泄漏与危险操作 | `setInterval` / 事件监听 / `IntersectionObserver` 是否正确清理；是否存在危险删除逻辑 | **✅ 通过**（A 静态层 §6）：监听器 / 观察器 / rAF 清理齐全；`clearAll()` 只删 `blog:` 前缀、后端无 `DROP`/`TRUNCATE`；1 条观察项（theme store 监听常驻） |
 
 ---
 
@@ -58,7 +58,8 @@
 | 轮次 | 时间点 | 范围 | 结论摘要 | 记录位置 |
 |---|---|---|---|---|
 | 预审计 | 2026-09-25（阶段 6 批 1） | 契约 ↔ 实现逐条对账（17 条接口 + 通用约定 + 7 个错误码） | 13 条已实现且一致 / 4 条为阶段 8 可选项；**发现 `40009` 不可达**；接口回归 **97/97 通过** | 本文件 → 阶段 6 预审计 |
-| 1 | 未发生（计划：阶段 9） | 前端 + 后端 | 待审计 | 本文件 |
+| 1 · A 静态层 | 2026-09-26（阶段 9 批 1） | 前端 48 / 后端 41 个源文件的静态层：敏感信息、重复代码、死代码、未使用依赖、内存泄漏与危险操作 + 第 6 项规则对账 | **第 7 / 11 / 12 项通过**；发现 2 处可合并重复、2 处死代码残留、3 处校验口径差异（**均低危**）→ 拟批 2 处理；B 运行时层待批 3 | 本文件 → 第 1 次审计 · A 静态层 |
+| 1 · B 运行时层 | 待执行（阶段 9 批 3） | README 启动 / 前端六模块 / 后端六项 / 响应式 / 对比度 / 双层校验实测 / 数据稳定性 | 待审计 | 本文件 |
 
 ---
 
@@ -324,3 +325,107 @@
 
 - **可复核**：`npm run smoke` **143/143**；`npm run build` **258ms** 与分包（`StudioView 11.91 kB` 懒加载、详情 shell 22.92 kB）；浏览器 14 项实测记录（批 6 / 批 7）与截图 `docs/demo/stage8-01…05`；各批 ai-log 条目。
 - **未覆盖（如实登记）**：浏览器控制台 warn 与网络层 4xx（本机 Edge 无头不可用）；`prefers-reduced-motion` 动态仿真；骨架屏出现时机（遗留 18）；详情页异步管线失败路径（遗留 32）—— 与阶段 6 / 7 的未覆盖范围一致，建议阶段 9 正式审计统一处理。
+
+---
+
+## 第 1 次审计 · A 静态层（阶段 9 批 1，2026-09-26）
+
+> **范围**：`frontend/src/**`（48 文件 / 6 513 行）与 `backend/src/main/java/**`（41 个 `.java` / 2 519 行）的**静态层**检查 —— 敏感信息（第 7 项）、重复代码（第 9 项）、死代码（第 10 项）、未使用依赖（第 11 项）、内存泄漏与危险操作（第 12 项），外加第 6 项（输入校验）的**前后端规则对账**。
+> **方法**：逐文件阅读 + 交叉引用计数（对每个前端模块 / 后端类统计导入与引用点）+ 关键词扫描（密钥、危险 API、`DROP`/`TRUNCATE`）+ 依赖—使用点对账 + CSS 类与变量的启发式引用检查。
+> **声明**：本批**只读**，未改动任何业务代码；所有"通过"都写明**检查了什么**，不写"无 bug"。
+
+### 1. 敏感信息（第 7 项）— ✅ 通过
+
+| 检查 | 结果 |
+|---|---|
+| 密钥 / Token / 密码（`frontend/src`、`backend/src`、`pom.xml`、`vite.config.js`、`index.html`） | **0 命中**（`password\|secret\|token\|apikey` 均无匹配） |
+| `.env` / `.pem` / `.key` 等凭据文件 | **不存在**（根目录 `ls -a` 复核） |
+| `application.yml` | 只含端口、数据源（`./data/blog.db` + WAL）、初始化与日志级别，**无凭据** |
+| `authorEmail` 是否回传前端 | **不回传**：`CommentVO`（`backend/src/main/java/com/example/blog/model/CommentVO.java:10-15`）是 5 字段 record（`id / articleId / authorName / content / createdAt`），**不含** `authorEmail` 与 `visitorId`；二者只出现在请求 DTO（`CommentCreateRequest.java:21`）与实体（`Comment.java:15`） |
+
+### 2. 重复代码（第 9 项）— 发现 2 处（低危，拟批 2）
+
+| # | 重复点 | 位置 | 说明 |
+|---|---|---|---|
+| 9-1 | "滚动 + `requestAnimationFrame` 合并"范式重复 | `frontend/src/utils/scrollSpy.js:38-51`、`frontend/src/components/BackToTop.vue:19-36`、`frontend/src/components/ReadingProgress.vue:23-38` | 三处均为「scroll/resize 监听 → 只登记一帧 → rAF 中计算 → 卸载时取消」；`ReadingProgress.vue:6` 注释自认"与 `utils/scrollSpy.js` 同一范式"。可抽 `utils/scrollFrame.js` |
+| 9-2 | `blankToNull` 两个 service 各写一份 | `backend/.../service/ArticleService.java:197`、`backend/.../service/CommentService.java:104` | 逻辑相同（空白串归一为 `null`），可提到 `common`（如 `Texts.java`） |
+
+> 其它疑似重复经核对**不成立**：`SkeletonBlock` 被 `ArticleSkeleton` 等复用（组合而非复制，25 处引用）；`escapeLike` 全仓只有一个定义（`ArticleRepository.java:247`）；标签"不存在则自动创建"由 `ArticleService` 委托 `TagService`（`ArticleService.java:27`），**没有**把重名 `40009` 逻辑复制两份；时间格式集中在 `common/TimeFormats.java`。
+
+### 3. 死代码（第 10 项）— 发现 2 处残留（拟批 2）
+
+| # | 残留 | 位置 | 依据 |
+|---|---|---|---|
+| 10-1 | `.gitkeep` 残留 | `backend/src/main/java/com/example/blog/config/.gitkeep` | 该包已有 `JacksonConfig.java` / `OpenApiConfig.java` 两个真实类 |
+| 10-2 | 未被引用的 getter | `frontend/src/api/error.js:16`（`get isValidationError()`） | 全仓 `isValidationError` **仅 1 处命中**（定义本身）；对照 `isNotFound` 有 3 处使用（`CommentItem.vue:66,87`、`ArticleDetailView.vue:43`） |
+
+**不含死代码的部分（已逐一核对）**：前端 38 个模块（20 组件 / 8 utils / 4 stores / 6 api）引用数全部 ≥ 2；后端 41 个类全部有引用（`BlogApplication`、5 个 controller、2 个 config 由框架发现，属正常）；各 `*.js` 导出函数均有使用点（含 `getVisitorId` 10 处、`useScrollSpy`、`revealDirective`、`fetchArticleDetail` 等）。
+
+**另两处 `.gitkeep` 的处置**：`backend/data/.gitkeep` **必须保留**（保证目录存在，`blog.db` 被 gitignore）；`docs/demo/.gitkeep` 含目录说明文本（非空占位），批 4 新增 `docs/demo/README.md` 时一并决定去留。
+
+**CSS 误报澄清**：工具曾标记 `.page-enter-active` / `.page-enter-from` / `.page-leave-active` / `.page-leave-to` 与 `--color-bg`，人工复核确认**均为误报** —— 前 4 个是 Vue `<Transition name="page">`（`App.vue:21`）运行时生成的类名；`--color-bg` 在 `frontend/src/styles/base.css:76`（`body` 背景）真实使用。**结论：未发现未使用的 CSS 类 / 变量**（启发式检查，局限见 §7）。
+
+### 4. 未使用依赖（第 11 项）— ✅ 通过
+
+| 侧 | 依赖 | 使用点 |
+|---|---|---|
+| 前端 | vue / vue-router / pinia | `main.js`、`router/index.js`、4 个 store |
+| | markdown-it / highlight.js / dompurify | `frontend/src/utils/markdown.js:6-8` |
+| | vite / @vitejs/plugin-vue（dev） | `vite.config.js:2-3` + `package.json` scripts |
+| 后端 | `spring-boot-starter-webmvc` / `-jdbc` / `-validation` | controller 层 / `JdbcTemplate` / 各请求 DTO 的 `@NotBlank` 等 |
+| | `sqlite-jdbc` / `springdoc-openapi-starter-webmvc-ui` | `application.yml` 驱动 + `config/OpenApiConfig.java` 与 20 个 `@Operation` |
+
+> `pom.xml:60` 有显式说明：**不引入测试起步依赖**（当前无测试），避免"声明了却没用"——与审计口径一致。
+
+### 5. 输入校验对账（第 6 项 · 静态部分）— 发现 3 处口径差异（低危）
+
+| # | 差异 | 前端 | 后端 | 影响 |
+|---|---|---|---|---|
+| 6-1 | 邮箱格式 | `frontend/src/utils/validate.js:9` 正则**要求含点**（`a@b` 会被前端拦下） | `CommentCreateRequest.java:19` 用 `@Email`（较宽松，`a@b` 可通过） | 前端**更严**：接口侧可存入"前端认为非法"的邮箱；不影响数据安全 |
+| 6-2 | 邮箱长度 | 未校验 | `@Size(max = 100)`（`CommentCreateRequest.java:20`） | 前端放行、后端 `40001` 拦下；表单按字段名回填原因（`CommentForm.vue:131`），体验可接受 |
+| 6-3 | 文章表单 | `views/StudioView.vue:92-98` 只校验：标题非空且 ≤100、正文非空、标签 ≤5 | `ArticleCreateRequest` / `ArticleUpdateRequest` 另含 `summary ≤200`、`coverUrl ≤200`、`content ≤50000` | 前端更松、后端兜底；`StudioView.vue:115` 会把 `40001` 的 `data.fields` 汇总展示 |
+
+**结论**：不存在"前端放过且后端静默接受"的方向；3 处均为可解释的松紧差异。评论表单三字段（昵称 ≤30 / 内容 ≤1000 / 必填）与后端**完全一致**（`validate.js:4-7` ↔ `CommentCreateRequest.java:15-24`）。
+
+### 6. 内存泄漏与危险操作（第 12 项）— ✅ 通过
+
+| 检查 | 结果 |
+|---|---|
+| 事件监听配对 | 6 组 `addEventListener` 全部有清理：`utils/scrollSpy.js:46-53`、`components/BackToTop.vue:28-36`、`components/ReadingProgress.vue:30-38`、`components/AppHeader.vue:77-87`（含 `matchMedia`）、`components/TagFilter.vue:30,35`、`api/http.js:48`（`{ once: true }` + `:81` 显式移除） |
+| `IntersectionObserver` | 3 处 `disconnect()`：`utils/reveal.js:60`、`views/ArticlesView.vue:173,192` |
+| 定时器 / 帧 | `setTimeout` 均有 `clearTimeout`（`stores/toast.js:18,38,53`、`LikeButton.vue:84-92`、`utils/debounce.js:13-22`）；`requestAnimationFrame` 均有 `cancelAnimationFrame`（`BackToTop.vue:19,34`、`scrollSpy.js:41,51`、`ReadingProgress.vue:26,36`）；`SearchInput.vue:47` 卸载时 `commit.cancel()` |
+| 危险删除（前端） | **无** `localStorage.clear()`；`utils/storage.js:96-101` 的 `clearAll()` 只删 `blog:` 前缀键，不动同域其它数据 |
+| 危险操作（后端） | 全部 `DELETE` 均为**参数化单行删除**（`ArticleRepository.java:205,210`、`CommentRepository.java:105`、`LikeRepository.java:71`、`TagRepository.java:98`）；全仓**无** `DROP TABLE` / `TRUNCATE` |
+| 危险 API（前端） | 仅 `MarkdownRenderer.vue:16` 一处 `v-html`，输入是 `utils/markdown.js:97` 的 **DOMPurify 消毒输出**（阶段 6 批 3 已用四类载荷实测为纯文本） |
+
+**观察项（非缺陷，登记）**：`frontend/src/stores/theme.js:70` 的 `matchMedia('change')` 监听在应用生命周期内**不解除** —— 单例 store、`init()` 只执行一次（`:62-66` 有 `initialized` 守卫），SPA 场景不构成泄漏；若将来支持 store 销毁需补移除。
+
+### 7. 本批未覆盖 / 局限（如实登记）
+
+1. **"未使用 CSS 类 / 变量"是启发式检查**（按类名字符串检索 `.vue` / `.js`）：动态拼接的类名可能漏判，不做 100% 反向断言；
+2. **后端只查到"类级"引用**，未做"未使用方法 / 字段"级检查；
+3. **未引入静态分析器**（无 ESLint / Checkstyle，本项目不为此新增依赖）；
+4. 浏览器层行为、接口实测、对比度、响应式、并发与 `SQLITE_BUSY` **不在本批范围**，属批 3（B 运行时层）。
+
+### 8. 结论分流（A 静态层）
+
+- **已修复**：无（本批只读，未改动业务代码）。
+- **未处理（拟批 2）**：9-1、9-2（重复实现）、10-1、10-2（死代码残留）、6-1 / 6-2 / 6-3（校验口径差异，至少统一邮箱口径）。
+- **需要我亲自验证（2 条，可复制）**：
+  1. `ApiError#isValidationError` 是否真的无人引用（期望只看到定义行 `frontend/src/api/error.js:16`）：
+
+     ```bash
+     cd "/d/code/Additional Full-stack Development of Personal blogs" && grep -rn "isValidationError" frontend/src
+     ```
+     ```powershell
+     cd "D:\code\Additional Full-stack Development of Personal blogs"; Get-ChildItem -Path frontend\src -Recurse -Include *.vue,*.js | Select-String -Pattern "isValidationError"
+     ```
+  2. `.gitkeep` 是否只剩 3 处（其中 `config/.gitkeep` 为残留）：
+
+     ```bash
+     cd "/d/code/Additional Full-stack Development of Personal blogs" && find . -name ".gitkeep" -not -path "./node_modules/*" -not -path "./frontend/node_modules/*" -not -path "./backend/target/*"
+     ```
+     ```powershell
+     cd "D:\code\Additional Full-stack Development of Personal blogs"; Get-ChildItem -Recurse -Force -Filter ".gitkeep" | Where-Object { $_.FullName -notmatch "node_modules|target" } | Select-Object FullName
+     ```
+- **风险提示**：本层未发现高危问题；3 处校验差异均为"松紧不一致"而非"校验缺失"，后端始终是最终防线。

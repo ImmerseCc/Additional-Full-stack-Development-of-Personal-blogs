@@ -958,3 +958,19 @@
 - 验证命令与结果（均为实测输出）：见第 2、3 点；`npm run build` → 274ms；`npm run smoke` → 143/143。
 - 遗留问题：见 `docs/current-state.md` 第五节（共 33 条；批 0 **无新增、无闭环**）。
 - 下一步：**批 1 —— 正式审计 A · 静态层（只读）**：逐文件阅读 `frontend/src/**`（48 文件）与 `backend/src/main/java/**`（41 个 `.java`），核对审计清单第 7 / 9 / 10 / 11 / 12 项 + 第 6 项规则对账，产出「第 1 次审计 · A 静态层」问题清单；**本批不改业务代码**，做完停下等作者确认。
+
+### 阶段 9：报错记录整理 + 前后端专项审计 + 交付文档与演示脚本（批 1：正式审计 A · 静态层，只读）
+- 我的提示词摘要："**批 0 通过，请继续**"（作者确认批 0 并授权批 1 —— 正式审计 A · 静态层：逐文件阅读 + 5 项检查 + 第 6 项规则对账，**只读、不改业务代码**）。
+- AI 做了什么：
+  1. **范围与规模**：逐文件核对 `frontend/src/**`（48 文件 / 6 513 行）与 `backend/src/main/java/**`（41 个 `.java` / 2 519 行）；
+  2. **第 7 项 敏感信息 → ✅ 通过**：`password|secret|token|apikey` 在 `frontend/src`、`backend/src`、`pom.xml`、`vite.config.js`、`index.html` **0 命中**；根目录无 `.env` / `.pem` / `.key`；`CommentVO`（5 字段 record，`model/CommentVO.java:10-15`）**不含** `authorEmail` / `visitorId`（二者只在 `CommentCreateRequest.java:21` 与 `Comment.java:15`）；
+  3. **第 9 项 重复代码 → 发现 2 处（低危）**：① 滚动 + rAF 合并范式重复三处（`utils/scrollSpy.js:38-51`、`components/BackToTop.vue:19-36`、`components/ReadingProgress.vue:23-38`）；② `blankToNull` 在 `ArticleService.java:197` 与 `CommentService.java:104` 各一份。反向核对：`SkeletonBlock` 为复用非复制、`escapeLike` 单一定义、标签自动创建已委托 `TagService`（无 `40009` 逻辑复制）；
+  4. **第 10 项 死代码 → 发现 2 处残留**：`backend/src/main/java/com/example/blog/config/.gitkeep`（该包已有 2 个真实类）；`frontend/src/api/error.js:16` 的 `isValidationError` getter（全仓仅定义处 1 次命中，对照 `isNotFound` 有 3 处使用）。前端 38 个模块 / 后端 41 个类其余全部有引用；**CSS 误报已人工澄清**（`.page-*` 为 `<Transition name="page">` 运行时生成、`--color-bg` 在 `base.css:76` 真实使用）→ 未发现未使用的 CSS 类 / 变量；
+  5. **第 11 项 未使用依赖 → ✅ 通过**：前端 8 个、后端 5 个依赖全部有使用点；`pom.xml:60` 显式说明不引测试起步依赖；
+  6. **第 12 项 内存泄漏与危险操作 → ✅ 通过**：6 组监听器全部配对清理、3 处 `IntersectionObserver.disconnect()`、rAF / 定时器 / debounce 均有清理；`utils/storage.js:96-101` 的 `clearAll()` 只删 `blog:` 前缀（**无** `localStorage.clear()`）；后端无 `DROP` / `TRUNCATE`，`DELETE` 全为参数化单行；唯一 `v-html`（`MarkdownRenderer.vue:16`）输入来自 DOMPurify。登记 1 条观察项：`stores/theme.js:70` 的 `matchMedia` 监听常驻（单例 store、`init()` 有守卫，可接受）；
+  7. **第 6 项 静态对账 → 3 处口径差异（低危）**：邮箱正则前端**更严**（`validate.js:9` 要求含点 vs 后端 `@Email`）；邮箱长度仅后端校验（≤100）；文章表单前端只校验标题 / 正文 / 标签数（`StudioView.vue:92-98`），`summary` / `coverUrl` / `content` 长度由后端兜底并在 `StudioView.vue:115` 汇总展示。评论三字段前后端**完全一致**；
+  8. **写入审计报告**：`docs/audit-report.md` 新增「第 1 次审计 · A 静态层」章节（§1–§8：方法 / 逐项结论 / 误报澄清 / 局限 / 三类分流 / 2 条作者可复制验证）；12 项清单「结论」列回填第 6 / 7 / 9 / 10 / 11 / 12 项；「历次审计」表新增 2 行（1·A 已完成，1·B 待批 3）；文件头部状态同步。
+- 改动文件：`docs/audit-report.md`（**新增整章 + 3 处表格回填**）、`docs/ai-log.md`（本条）；**未改动任何业务代码、未新增依赖、未改契约**。
+- 验证命令与结果（均为实测输出）：前端 38 模块 / 后端 41 类的引用计数脚本；密钥关键词扫描 0 命中；`.gitkeep` 定位 3 处；依赖—使用点对账；`isValidationError` 零引用复核（唯一命中为定义行）。
+- 遗留问题：见 `docs/current-state.md` 第五节（33 条不变）；本批**新增待批 2 处理项 7 条**：9-1、9-2、10-1、10-2、6-1、6-2、6-3。
+- 下一步：**批 2 —— 审计问题修复**：修 9-1 / 9-2（重复实现）、10-1 / 10-2（死代码残留）、6-1 / 6-2 / 6-3（校验口径，至少统一邮箱口径），外加作者追加确认的**评论错误提示动画**与 **Toast `warning` 类型**、遗留 32 的 `errorComponent` + 失败态演练；每项附复验证据，做完停下等作者确认。
