@@ -806,3 +806,17 @@
 - 验证命令与结果：本轮为文档轮，**未运行新的构建 / 接口命令**；沿用批 8 的实测值（`npm run build` **311ms**、`npm run smoke` **97/97 项断言**、数据 `12 / 8 / 23 / 0 / 0`）。
 - 遗留问题：见 `docs/current-state.md` 第五节（共 33 条；本阶段闭环 22 / 23 / 27 / 29 / 30，部分闭环 20，新增 31 / 32 / 33）。
 - 下一步：**阶段 8（功能迭代二：后端能力）** —— 作者新开会话后，AI 先出分批方案与决策点（候选范围见 `docs/current-state.md` §三）。
+
+### 阶段 8：功能迭代二（批 0：开工基线）
+- 我的提示词摘要：新会话开场要求"**先不要写代码**"，先读 `AGENTS.md`、`README.md` 与 4 份 docs 后用**不超过 10 行**总结现状（技术栈 / 已完成阶段 / 当前目标 / 下一步 / 禁止事项与遗留）；随后"**请继续，分批列出需要的事项**"：AI 给出**阶段 8 分批方案（批 0–批 8）+ 7 个决策点 BR–BX**（附规划前只读核对：git 干净 / 两端在运行 / `40009` 已定义未启用 / `ArticleDetailVO` 已有 `prev`/`next` 字段 / `api/articles.js` 无写封装 / JDBC URL 未加 WAL），作者回复"**均同意，请继续**"。
+- AI 做了什么：
+  1. **只读探测**：`git status`（工作区干净，HEAD `9c9d2ba`）；`netstat`（后端 8080 PID 4200、前端 5173 PID 5124）；`curl /api/health` → `{"code":0,"message":"ok","data":{"status":"UP","time":"2026-09-26T13:36:18"}}`；前端 `HTTP 200`；
+  2. **构建基线**：`npm run build` → **153 模块**、`✓ built in 302ms`（复跑 229ms）；`index-*.js 55.57 kB / gzip 22.34 kB`、`ArticleDetailView 19.83 kB / gzip 7.29 kB`、`MarkdownRenderer 281.34 kB / gzip 104.55 kB`、共享 chunk `_plugin-vue_export-helper 70.36 kB / gzip 27.28 kB`、`ArticlesView 8.63 kB`、`AboutView 5.03 kB`；
+  3. **接口回归基线**：`npm run smoke` → **全部通过：97/97 项断言**；脚本末尾输出"契约未覆盖：GET/PUT /api/comments/{id}、GET /api/articles/{id}/adjacent、标签管理接口（契约 §四·10/11/16/17，标为阶段 8 可选项）"——与阶段 8 批 2–批 4 的范围完全对应；
+  4. **数据库只读复核**（复用临时程序 `backend/target/tmp-check/DbCheck.java`，直读不经接口）：`article=12 / tag=8 / article_tag=23 / comment=0 / like_record=0`；**6 张表 / 8 个索引**；`journal_mode=delete`；`ARTICLE_STATUS PUBLISHED = 12`。**注**：直连会话查到的 `busy_timeout = 3000` 是该连接自身默认值，应用连接由 JDBC URL 设定 5000（同阶段 7 批 0 说明），**非回归**；
+  5. **文档更正**：`docs/current-state.md`（头部状态块 + §零 item 2 / item 3 + §二 阶段 8 决策 BR–BX + §三 范围转正 + §四 阶段 8 批 0 行 + §六 环境事实四行）、`docs/collaboration-log.md`（头部"最后更新" + 阶段索引第 8 行改为"进行中"）、`README.md`（顶部状态块的"当前阶段"与"Git"两行）；
+  6. **决策点确认**：**BR** 纳入极简管理入口 `/studio`（隐藏路由）／**BS** 评论修改不改表不改 VO（编辑就地生效）／**BT** 相邻文章只取 `PUBLISHED` + 详情接口带出 `prev`/`next`／**BU** 阅读数用 `POST /api/articles/{id}/views`（GET 保持无副作用）／**BV** 搜索不扩展到摘要／**BW** WAL 走 JDBC URL 追加／**BX** 顺带演练 `50000` / `50001` / `SQLITE_BUSY` —— **均经作者确认**。
+- 改动文件：`README.md`、`docs/{current-state,collaboration-log,ai-log}.md`（**均为完整文档**，无占位文件）；**无前端 / 后端业务代码改动、未新增依赖**；临时程序 `DbCheck.java` 为既有文件（在 `.gitignore` 覆盖的 `target/` 内，不提交）。提交：阶段 8 批 0 提交见 `git log` 最新一条。
+- 验证命令与结果（均为实测输出）：见第 1–4 点。
+- 遗留问题：阶段 8 计划闭环 **9**（WAL，批 5）、**19**（上下篇，批 3 + 批 6）、**28**（`40009` 启用，批 4）；决策 BX 目标为把"未覆盖项"（`50000` / `50001` / `SQLITE_BUSY`）闭环。其余（8 / 10 / 16 / 18 / 20·27 / 25 / 26 / 31 / 32 / 33）保持在册。
+- 下一步：**批 1 —— 契约 v1.1 + 数据模型同步**（纯文档：第 10 / 11 / 16 / 17 条转正 + 阅读数条目 + 语义补注；`docs/data-model.md` 同步 WAL 与 `view_count` 说明），**做完停下等作者确认**再动代码。
